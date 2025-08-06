@@ -1,6 +1,7 @@
 import React from 'react'
 import TaskCard from './TaskCard'
 import TodayProgress from './TodayProgress';
+import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
     return (
@@ -10,9 +11,10 @@ const Dashboard = () => {
                     Dashboard
                 </h3>
                 <div className='flex items-center gap-4'>
-                    <button className='bg-gradient-to-r from-purple-500 to-purple-600 shadow px-4 py-2 rounded-md font-medium text-white text-sm hover:scale-105 transition-transform'>
+                   
+                    <Link className='bg-gradient-to-r from-purple-500 to-purple-600 shadow px-4 py-2 rounded-md font-medium text-white text-sm hover:scale-105 transition-transform' to={'/add-task'}>
                         + Add New Task
-                    </button>
+                    </Link>
                 </div>
             </div>
             <div className='space-y-6  p-6 max-w-md'>
