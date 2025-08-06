@@ -46,6 +46,8 @@ const TodayProgress = () => {
 
     return (
         <div className="space-y-6 mx-auto p-6 max-w-4xl">
+        {/* <div className="space-y-6  p-6 max-w-md"> */}
+
             {/* Main Progress Card */}
             <div className="bg-white shadow-lg hover:shadow-xl p-6 border border-gray-100 rounded-2xl transition-all duration-300">
                 {/* Header */}
@@ -109,97 +111,8 @@ const TodayProgress = () => {
                             <Clock className="w-5 h-5 text-blue-600" />
                         </div>
                         <div>
-                            <p className="font-medium text-blue-600 text-sm">Remaining</p>
+                            <p className="font-medium text-blue-600 text-sm  ">Remaining</p>
                             <p className="font-bold text-blue-700 text-2xl">{remainingTasks}</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Progress Message */}
-                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 mt-6 p-4 border border-purple-100 rounded-xl">
-                    <div className="flex items-center gap-2 mb-2">
-                        <TrendingUp className="w-4 h-4 text-purple-600" />
-                        <span className="font-medium text-purple-700 text-sm">Progress Insight</span>
-                    </div>
-                    <p className="text-purple-600 text-sm">
-                        {progressPercentage === 100 ? (
-                            "🎉 Congratulations! You've completed all tasks for today!"
-                        ) : progressPercentage >= 75 ? (
-                            "🔥 You're doing great! Almost there, keep up the momentum!"
-                        ) : progressPercentage >= 50 ? (
-                            "💪 Good progress! You're halfway through your tasks."
-                        ) : progressPercentage >= 25 ? (
-                            "🚀 Nice start! Keep going to build momentum."
-                        ) : (
-                            "📋 Ready to tackle your tasks? Let's get started!"
-                        )}
-                    </p>
-                </div>
-            </div>
-
-            {/* Quick Task List (Demo) */}
-            <div className="bg-white shadow-lg p-6 border border-gray-100 rounded-2xl">
-                <h3 className="mb-4 font-semibold text-gray-900 text-lg">Quick Task Overview</h3>
-                <div className="space-y-3">
-                    {tasks.map((task) => (
-                        <div key={task.id} className="flex items-center gap-3 hover:bg-gray-50 p-3 rounded-lg transition-colors duration-200">
-                            <button
-                                onClick={() => toggleTask(task.id)}
-                                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${task.completed
-                                        ? 'bg-green-500 border-green-500 text-white'
-                                        : 'border-gray-300 hover:border-green-400'
-                                    }`}
-                            >
-                                {task.completed && <CheckCircle className="w-3 h-3" />}
-                            </button>
-                            <span className={`flex-1 ${task.completed ? 'line-through text-gray-500' : 'text-gray-700'}`}>
-                                {task.title}
-                            </span>
-                            <span className={`text-xs px-2 py-1 rounded-full ${task.completed
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-gray-100 text-gray-600'
-                                }`}>
-                                {task.completed ? 'Done' : 'Pending'}
-                            </span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Daily Stats Summary */}
-            <div className="gap-4 grid grid-cols-1 md:grid-cols-3">
-                <div className="bg-gradient-to-br from-purple-500 to-indigo-600 shadow-lg p-6 rounded-xl text-white">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <p className="text-purple-100 text-sm">Completion Rate</p>
-                            <p className="font-bold text-3xl">{progressPercentage}%</p>
-                        </div>
-                        <div className="bg-white/20 p-3 rounded-full">
-                            <TrendingUp className="w-6 h-6" />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg p-6 rounded-xl text-white">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <p className="text-green-100 text-sm">Tasks Done</p>
-                            <p className="font-bold text-3xl">{completedTasks}</p>
-                        </div>
-                        <div className="bg-white/20 p-3 rounded-full">
-                            <CheckCircle className="w-6 h-6" />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-gradient-to-br from-blue-500 to-cyan-600 shadow-lg p-6 rounded-xl text-white">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <p className="text-blue-100 text-sm">Remaining</p>
-                            <p className="font-bold text-3xl">{remainingTasks}</p>
-                        </div>
-                        <div className="bg-white/20 p-3 rounded-full">
-                            <Clock className="w-6 h-6" />
                         </div>
                     </div>
                 </div>

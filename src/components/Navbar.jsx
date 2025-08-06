@@ -30,30 +30,20 @@ function NavBar() {
                 </div>
 
                 {/* Center: Date */}
-                <div className="hidden md:block">
-                    <span className="bg-white shadow-sm px-3 py-1 rounded-full text-gray-700 text-sm">
+                <div className=" md:block">
+                    <span className="bg-white shadow-sm px-3 py-2 rounded-full text-gray-700 text-sm border border-gray-400">
                         {today}
                     </span>
                 </div>
 
                 {/* Right: Actions */}
                 <div className="flex items-center gap-4">
-                    {/* Theme Toggle */}
-                    <button onClick={ThemeChanger} className="hover:bg-white p-2 rounded-full transition-colors">
-                        {theme
-                            ? <FiMoon className="text-gray-700 text-xl" />
-                            : <FiSun className="text-yellow-500 text-xl" />}
-                    </button>
+                   
 
                     {/* Notification Icon */}
                     <button className="relative hover:bg-white p-2 rounded-full">
                         <FiBell className="text-gray-700 text-xl" />
                         <span className="top-1 right-1 absolute bg-red-500 rounded-full w-2 h-2"></span>
-                    </button>
-
-                    {/* Add Task Button */}
-                    <button className="bg-gradient-to-r from-purple-500 to-purple-600 shadow px-4 py-2 rounded-md font-medium text-white text-sm hover:scale-105 transition-transform">
-                        + Add New Task
                     </button>
 
                     {/* User Avatar */}
