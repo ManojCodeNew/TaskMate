@@ -1,12 +1,8 @@
 import React, { useState } from 'react';
-import { FiBell, FiSun, FiMoon } from 'react-icons/fi';
-import { FaRegCalendarAlt } from 'react-icons/fa';
+import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react';
+import TaskMateLogo from '../assets/TaskMateLogo.png';
 
 function NavBar() {
-    const [theme, setTheme] = useState(false);
-
-    const ThemeChanger = () => setTheme(!theme);
-
     const today = new Date().toLocaleDateString('en-US', {
         weekday: 'long',
         month: 'short',
@@ -14,42 +10,44 @@ function NavBar() {
     });
 
     return (
-        <header
-            className={'sticky top-0 z-50 w-full backdrop-blur-md transition-all duration-300 shadow-sm bg-gradient-to-r from-[#e3eaf0] to-[#e3eaf0]'
-            }>
+        <header className="top-0 z-50 sticky bg-white/70 shadow-sm backdrop-blur-md border-gray-200 border-b w-full transition-all duration-300">
             <div className="flex justify-between items-center mx-auto px-4 py-3 max-w-7xl">
+
                 {/* Left: Logo + Name */}
                 <div className="flex items-center gap-3">
-                    {/* <div className="bg-purple-500 shadow-md p-2 rounded-xl text-white text-lg">
-                        <FaRegCalendarAlt />
-                    </div> */}
-                    <div>
+                    <img
+                        src={TaskMateLogo}
+                        alt="TaskMate Logo"
+                        className="w-10 h-10 object-contain"
+                    />
+                    <div className="">
                         <h1 className="font-semibold text-gray-900 text-lg">TaskMate</h1>
-                        <p className="-mt-1 text-gray-700 text-sm">Your daily productivity partner</p>
+                        <p className="-mt-1 text-gray-700 text-sm md:text-2xl">Your daily productivity partner</p>
                     </div>
                 </div>
 
-                {/* Center: Date */}
-                <div className=" md:block">
-                    <span className="bg-white shadow-sm px-3 py-2 rounded-full text-gray-700 text-sm border border-gray-400">
+                {/* Center: Date (hidden on mobile) */}
+                <div className="hidden md:block">
+                    <span className="bg-white/80 shadow-sm px-3 py-2 border border-gray-300 rounded-full text-gray-700 text-sm">
                         {today}
                     </span>
                 </div>
 
                 {/* Right: Actions */}
                 <div className="flex items-center gap-4">
-                   
+                    {/* Show Sign In if logged out */}
+                    <SignedOut>
+                        <SignInButton mode="modal">
+                            <button className="bg-gradient-to-r from-purple-500 to-purple-600 shadow px-4 py-2 rounded-md font-medium text-white text-sm hover:scale-105 transition-transform">
+                                Sign In
+                            </button>
+                        </SignInButton>
+                    </SignedOut>
 
-                    {/* Notification Icon */}
-                    <button className="relative hover:bg-white p-2 rounded-full">
-                        <FiBell className="text-gray-700 text-xl" />
-                        <span className="top-1 right-1 absolute bg-red-500 rounded-full w-2 h-2"></span>
-                    </button>
-
-                    {/* User Avatar */}
-                    <div className="flex justify-center items-center bg-blue-500 rounded-full w-8 h-8 font-bold text-white text-sm">
-                        M
-                    </div>
+                    {/* Show Profile if logged in */}
+                    <SignedIn>
+                        <UserButton />
+                    </SignedIn>
                 </div>
             </div>
         </header>

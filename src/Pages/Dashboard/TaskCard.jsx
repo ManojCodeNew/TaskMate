@@ -2,6 +2,11 @@ import React, { useState } from 'react';
 import { Clock, Calendar, MoreVertical, Play, CheckCircle, Circle } from 'lucide-react';
 
 const TaskCard = () => {
+    // Task List Features 
+    // 1. Reorder
+    // 2. Auto Schedule Time
+    // 3. Mark as acompleted 
+    // 4. edit & delete task
     const [tasks, setTasks] = useState([
         {
             id: 1,
