@@ -1,57 +1,86 @@
 import React from 'react';
-import NavBar from './components/Navbar';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { SignedOut, SignedIn } from '@clerk/clerk-react';
+
+import Layout from './components/Layout.jsx';
 import Dashboard from './Pages/Dashboard/Dashboard.jsx';
-import Menu from './components/Menu.jsx';
-import { Routes, Route } from 'react-router-dom';
 import AddTask from './Pages/AddTask/AddTask.jsx';
 import SignInPage from './Pages/Auth/SignInPage.jsx';
 import SignUpPage from './Pages/Auth/SignUpPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
-import { SignIn, SignInButton, SignOutButton, SignUp, SignedOut, SignedIn, UserButton } from '@clerk/clerk-react';
 
 function App() {
   return (
-    <>
-      <NavBar />
-      <Menu />
-
-      {/* Routes */}
-      <div className="ml-64 p-4">
-          <Routes>
-            <Route path="/sign-in" element={<SignInPage />} />
-            <Route path="/sign-up" element={<SignUpPage />} />
-
-            {/* Protected Route */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-
-
-            {/* <Route path="/Dashboard" element={<Dashboard />} /> */}
-            <Route path='/add-task' element={<AddTask />} />
-            {/* <Route path='/drawing-tool' element={<DrawingTool/>}/> */}
-            {/* <Route path='/ai-assistant' element={<AIAssistant/>}/> */}
-            {/* <Route path="/timer" element={<Timer />} /> */}
-            {/* <Route path="/voice-notes" element={<VoiceNotes />} /> */}
-            {/* <Route path="*" element={<NotFoundPage>} /> */}
-
-
-
-
-
-          </Routes>
+    <div className="relative bg-gradient-to-br from-slate-200 via-blue-100 to-slate-300 min-h-screen overflow-hidden">
+      {/* Background decorations */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="top-10 right-10 absolute bg-slate-400 opacity-20 rounded-full w-32 h-32 animate-pulse"></div>
+        <div className="bottom-20 left-10 absolute bg-teal-600 opacity-20 rounded-full w-24 h-24 animate-bounce"></div>
       </div>
-      {/* <main className="mt-16 ml-64 p-4"> */}
-      <Dashboard />
-      {/* </main> */}
-    </>
+
+      {/* Wrap all pages in Layout */}
+      <Layout>
+        <Routes>
+          {/* Default redirect based on auth */}
+          <Route
+            path="/"
+            element={
+              <SignedIn>
+                <Navigate to="/dashboard" replace />
+              </SignedIn>
+            }
+          />
+          <Route
+            path="/"
+            element={
+              <SignedOut>
+                <Navigate to="/sign-in" replace />
+              </SignedOut>
+            }
+          />
+
+          <Route path="/sign-in" element={<SignInPage />} />
+          <Route path="/sign-up" element={<SignUpPage />} />
+
+          {/* Protected Routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/add-task"
+            element={
+              <ProtectedRoute>
+                <AddTask />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Catch all */}
+          <Route
+            path="*"
+            element={
+              <SignedIn>
+                <Navigate to="/dashboard" replace />
+              </SignedIn>
+            }
+          />
+          <Route
+            path="*"
+            element={
+              <SignedOut>
+                <Navigate to="/sign-in" replace />
+              </SignedOut>
+            }
+          />
+        </Routes>
+      </Layout>
+    </div>
   );
 }
-
 
 export default App;

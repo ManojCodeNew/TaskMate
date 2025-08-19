@@ -31,50 +31,48 @@ const TodayProgress = () => {
     };
 
     const getProgressColor = (percentage) => {
-        if (percentage >= 75) return 'from-green-500 to-emerald-600';
-        if (percentage >= 50) return 'from-blue-500 to-indigo-600';
-        if (percentage >= 25) return 'from-purple-500 to-violet-600';
-        return 'from-gray-400 to-gray-500';
+        if (percentage >= 75) return 'from-teal-500 to-teal-600';
+        if (percentage >= 50) return 'from-teal-500 to-teal-600';
+        if (percentage >= 25) return 'from-teal-400 to-teal-500';
+        return 'from-slate-400 to-slate-500';
     };
 
     const getProgressTextColor = (percentage) => {
-        if (percentage >= 75) return 'text-green-600';
-        if (percentage >= 50) return 'text-blue-600';
-        if (percentage >= 25) return 'text-purple-600';
-        return 'text-gray-600';
+        if (percentage >= 75) return 'text-teal-600';
+        if (percentage >= 50) return 'text-teal-600';
+        if (percentage >= 25) return 'text-teal-600';
+        return 'text-slate-600';
     };
 
     return (
-        <div className="space-y-6 mx-auto p-6 max-w-4xl">
-        {/* <div className="space-y-6  p-6 max-w-md"> */}
-
+        <div className="w-full">
             {/* Main Progress Card */}
-            <div className="bg-white shadow-lg hover:shadow-xl p-6 border border-gray-100 rounded-2xl transition-all duration-300">
+            <div className="bg-white shadow-lg hover:shadow-xl p-4 sm:p-6 border border-slate-200 rounded-2xl transition-all duration-300">
                 {/* Header */}
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-6">
                     <div className="flex items-center gap-3">
-                        <div className="bg-purple-100 p-2 rounded-full">
-                            <Target className="w-6 h-6 text-purple-600" />
+                        <div className="bg-teal-100 p-2 rounded-full">
+                            <Target className="w-5 h-5 sm:w-6 sm:h-6 text-teal-600" />
                         </div>
-                        <h2 className="font-bold text-gray-900 text-xl">Today's Progress</h2>
+                        <h2 className="font-bold text-slate-800 text-lg sm:text-xl">Today's Progress</h2>
                     </div>
 
-                    <div className="text-right">
-                        <span className="text-gray-500 text-sm">{completedTasks} of {totalTasks} tasks</span>
+                    <div className="text-left sm:text-right">
+                        <span className="text-slate-500 text-xs sm:text-sm">{completedTasks} of {totalTasks} tasks</span>
                     </div>
                 </div>
 
                 {/* Progress Bar */}
-                <div className="mb-6">
+                <div className="mb-4 sm:mb-6">
                     <div className="flex justify-between items-center mb-2">
-                        <span className="font-medium text-gray-700 text-sm">Overall Progress</span>
-                        <span className={`text-2xl font-bold ${getProgressTextColor(progressPercentage)} transition-colors duration-300`}>
+                        <span className="font-medium text-slate-700 text-xs sm:text-sm">Overall Progress</span>
+                        <span className={`text-xl sm:text-2xl font-bold ${getProgressTextColor(progressPercentage)} transition-colors duration-300`}>
                             {progressPercentage}%
                         </span>
                     </div>
 
                     <div className="relative">
-                        <div className="bg-gray-200 rounded-full w-full h-3 overflow-hidden">
+                        <div className="bg-slate-200 rounded-full w-full h-3 overflow-hidden">
                             <div
                                 className={`h-full bg-gradient-to-r ${getProgressColor(progressPercentage)} rounded-full transition-all duration-1000 ease-out relative overflow-hidden`}
                                 style={{ width: `${animatedProgress}%` }}
@@ -86,33 +84,33 @@ const TodayProgress = () => {
 
                         {/* Progress indicator dot */}
                         <div
-                            className={`absolute top-1/2 w-4 h-4 bg-white border-2 border-purple-500 rounded-full transform -translate-y-1/2 transition-all duration-1000 ease-out shadow-md`}
+                            className={`absolute top-1/2 w-4 h-4 bg-white border-2 border-teal-500 rounded-full transform -translate-y-1/2 transition-all duration-1000 ease-out shadow-md`}
                             style={{ left: `calc(${animatedProgress}% - 8px)` }}
                         ></div>
                     </div>
                 </div>
 
                 {/* Stats */}
-                <div className="gap-4 grid grid-cols-1 sm:grid-cols-2">
+                <div className="gap-3 sm:gap-4 grid grid-cols-1 sm:grid-cols-2">
                     {/* Completed Tasks */}
-                    <div className="flex items-center gap-3 bg-green-50 p-4 border border-green-100 rounded-xl">
-                        <div className="bg-green-100 p-2 rounded-full">
-                            <CheckCircle className="w-5 h-5 text-green-600" />
+                    <div className="flex items-center gap-3 bg-teal-50 p-3 sm:p-4 border border-teal-100 rounded-xl">
+                        <div className="bg-teal-100 p-2 rounded-full">
+                            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-teal-600" />
                         </div>
                         <div>
-                            <p className="font-medium text-green-600 text-sm">Completed</p>
-                            <p className="font-bold text-green-700 text-2xl">{completedTasks}</p>
+                            <p className="font-medium text-teal-600 text-xs sm:text-sm">Completed</p>
+                            <p className="font-bold text-teal-700 text-xl sm:text-2xl">{completedTasks}</p>
                         </div>
                     </div>
 
                     {/* Remaining Tasks */}
-                    <div className="flex items-center gap-3 bg-blue-50 p-4 border border-blue-100 rounded-xl">
-                        <div className="bg-blue-100 p-2 rounded-full">
-                            <Clock className="w-5 h-5 text-blue-600" />
+                    <div className="flex items-center gap-3 bg-slate-50 p-3 sm:p-4 border border-slate-200 rounded-xl">
+                        <div className="bg-slate-100 p-2 rounded-full">
+                            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600" />
                         </div>
                         <div>
-                            <p className="font-medium text-blue-600 text-sm  ">Remaining</p>
-                            <p className="font-bold text-blue-700 text-2xl">{remainingTasks}</p>
+                            <p className="font-medium text-slate-600 text-xs sm:text-sm">Remaining</p>
+                            <p className="font-bold text-slate-700 text-xl sm:text-2xl">{remainingTasks}</p>
                         </div>
                     </div>
                 </div>
