@@ -12,10 +12,13 @@
   "dependencies": {
     "@clerk/clerk-react": "^5.42.1",
     "@tailwindcss/vite": "^4.1.11",
+    "konva": "^9.3.22",
     "lucide-react": "^0.536.0",
     "react": "^19.1.0",
+    "react-color": "^2.19.3",
     "react-dom": "^19.1.0",
     "react-icons": "^5.5.0",
+    "react-konva": "^19.0.7",
     "react-router-dom": "^7.7.1",
     "tailwindcss": "^4.1.11"
   },

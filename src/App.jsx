@@ -8,6 +8,8 @@ import AddTask from './Pages/AddTask/AddTask.jsx';
 import SignInPage from './Pages/Auth/SignInPage.jsx';
 import SignUpPage from './Pages/Auth/SignUpPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import TaskMateLoading from './Pages/Loading/TaskMateLoading.jsx';
+import DrawingBoard from './Pages/DrawingTool/DrawingBoard.jsx';
 
 function App() {
   return (
@@ -25,9 +27,14 @@ function App() {
           <Route
             path="/"
             element={
-              <SignedIn>
-                <Navigate to="/dashboard" replace />
-              </SignedIn>
+              <>
+                <SignedIn>
+                  <Navigate to="/dashboard" replace />
+                </SignedIn>
+                <SignedOut>
+                  <Navigate to="/sign-in" replace /> {/* or HomePage if you make one */}
+                </SignedOut>
+              </>
             }
           />
           <Route
@@ -52,13 +59,22 @@ function App() {
             }
           />
           <Route
-            path="/add-task"
+            path="/loading"
             element={
               <ProtectedRoute>
-                <AddTask />
+                <TaskMateLoading />
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/drawing"
+            element={
+              <ProtectedRoute>
+                <DrawingBoard />
+              </ProtectedRoute>
+            }
+          />
+
 
           {/* Catch all */}
           <Route
