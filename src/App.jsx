@@ -10,6 +10,7 @@ import SignUpPage from './Pages/Auth/SignUpPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import TaskMateLoading from './Pages/Loading/TaskMateLoading.jsx';
 import DrawingBoard from './Pages/DrawingTool/DrawingBoard.jsx';
+import AIAssistant from './Pages/AIChat/AIAssistant.jsx';
 
 function App() {
   return (
@@ -58,6 +59,16 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {/*  */}
+          <Route
+            path="/add-task"
+            element={
+              <ProtectedRoute>
+                <AddTask />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/loading"
             element={
@@ -71,6 +82,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <DrawingBoard />
+              </ProtectedRoute>
+            }
+          />
+        <Route
+            path="/ai"
+            element={
+              <ProtectedRoute>
+                <AIAssistant />
               </ProtectedRoute>
             }
           />
