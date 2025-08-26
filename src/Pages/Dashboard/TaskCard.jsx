@@ -1,72 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Calendar, MoreVertical, Play, CheckCircle, Circle, Loader2, AlertCircle } from 'lucide-react';
-import { useAuth } from '@clerk/clerk-react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  Clock, Calendar, CheckCircle, Circle, Loader2, AlertCircle, 
+  Tag, Star, Trash2, Plus, RefreshCw, ChevronLeft, ChevronRight 
+} from 'lucide-react';
+import { useTasks } from '../../context/TaskProvider';
 
 const TaskCard = () => {
-    //  Add Features
-    const [tasks, setTasks] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [startTime, setStartTime] = useState("08:00");
-    const { getToken } = useAuth();
+    const navigate = useNavigate();
+    const { tasks, loading, error, fetchTasks, updateTask, deleteTask } = useTasks();
+    const [processingTasks, setProcessingTasks] = useState(new Set());
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [dateRange, setDateRange] = useState([]);
 
-    const API_BASE_URL = 'http://localhost:3000/api';
+    // Generate 7-day date range centered around today
+    useEffect(() => {
+        const dates = [];
+        const today = new Date();
 
-    const getUserToken = async () => {
-        // Get the Clerk JWT using the 'supabase' template you configured
-        const token = await getToken({ template: 'supabase' });
-        return token;
-    }
-
-
-    // Fetch tasks from API
-    const fetchTasks = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            const token = await getUserToken();
-            if (!token) {
-                throw new Error('No authentication token found');
-            }
-
-            const response = await fetch(`${API_BASE_URL}/tasks`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to fetch tasks: ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            // Transform API data to match component structure
-            const transformedTasks = data.map(task => ({
-                id: task.id,
-                title: task.title,
-                description: task.description || '',
-                startTime: task.start_time || "09:00",
-                endTime: task.end_time || "10:00",
-                priority: task.priority || "MEDIUM",
-                status: task.status || "Pending",
-                category: getCategoryFromTags(task.tags) || "Work",
-                completed: task.status === "Completed" || task.completed_at !== null,
-                due_date: task.due_date,
-                tags: task.tags || [],
-                estimatedDuration: task.estimatedDuration || 30
-            }));
-
-            setTasks(transformedTasks);
-        } catch (err) {
-            console.error('Error fetching tasks:', err);
-            setError(err.message);
-        } finally {
-            setLoading(false);
+        // Generate 7 days starting from 3 days before today
+        for (let i = -3; i <= 3; i++) {
+            const date = new Date(today);
+            date.setDate(today.getDate() + i);
+            dates.push(date);
         }
-    };
+
+        setDateRange(dates);
+    }, []);
 
     // Helper function to get category from tags
     const getCategoryFromTags = (tags) => {
@@ -77,99 +37,166 @@ const TaskCard = () => {
         return "Work";
     };
 
-    // Update task completion status
+    // Transform API data to match component structure
+    const transformedTasks = tasks.map(task => ({
+        id: task.id,
+        title: task.title,
+        description: task.description || '',
+        priority: task.priority || "medium",
+        status: task.status || "pending", 
+        category: getCategoryFromTags(task.tags) || "Work",
+        completed: task.status === "completed" || task.completed_at !== null,
+        due_date: task.due_date,
+        tags: task.tags || [],
+        estimatedDuration: task.estimatedDuration || 60,
+        start_date: task.start_date,
+        created_at: task.created_at,
+        updated_at: task.updated_at,
+        completed_at: task.completed_at
+    }));
+
+    // Filter tasks for selected date
+    const getTasksForDate = (targetDate) => {
+        const targetDateStr = targetDate.toISOString().split("T")[0];
+        
+        return transformedTasks.filter(task => {
+            if (!task) return false;
+
+            // Get start and due dates
+            const startDate = new Date(task.start_date).toISOString().split("T")[0];
+            const dueDate = new Date(task.due_date).toISOString().split("T")[0];
+
+            // Check if target date is within the task's range (start_date to due_date)
+            return targetDateStr >= startDate && targetDateStr <= dueDate;
+        });
+    };
+
+    const selectedDateTasks = getTasksForDate(selectedDate);
+
+    // Toggle task completion
     const toggleTaskCompletion = async (taskId) => {
+        if (processingTasks.has(taskId)) return;
+
+        setProcessingTasks(prev => new Set([...prev, taskId]));
+
         try {
-            const task = tasks.find(t => t.id === taskId);
+            const task = transformedTasks.find(t => t.id === taskId);
             const newCompletedStatus = !task.completed;
-            const token = await getUserToken();
 
-            if (!token) {
-                throw new Error('No authentication token found');
-            }
-            const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    status: newCompletedStatus ? "Completed" : "Pending",
-                    completed_at: newCompletedStatus ? new Date().toISOString() : null
-                }),
+            await updateTask(taskId, {
+                status: newCompletedStatus ? "completed" : "pending",
+                completed_at: newCompletedStatus ? new Date().toISOString() : null
             });
-
-            if (!response.ok) {
-                throw new Error('Failed to update task');
-            }
-
-            // Update local state
-            setTasks(tasks.map(task =>
-                task.id === taskId
-                    ? { ...task, completed: newCompletedStatus, status: newCompletedStatus ? "Completed" : "Pending" }
-                    : task
-            ));
         } catch (err) {
             console.error('Error updating task:', err);
-            setError('Failed to update task');
+        } finally {
+            setProcessingTasks(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(taskId);
+                return newSet;
+            });
+        }
+    };
+
+    // Delete task with confirmation
+    const handleDeleteTask = async (taskId) => {
+        if (processingTasks.has(taskId)) return;
+
+        if (!confirm('Are you sure you want to delete this task?')) return;
+
+        setProcessingTasks(prev => new Set([...prev, taskId]));
+
+        try {
+            await deleteTask(taskId);
+        } catch (err) {
+            console.error('Error deleting task:', err);
+        } finally {
+            setProcessingTasks(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(taskId);
+                return newSet;
+            });
         }
     };
 
     const getPriorityColor = (priority) => {
-        switch (priority.toUpperCase()) {
-            case 'HIGH': return 'bg-slate-600 text-white';
-            case 'MEDIUM': return 'bg-teal-600 text-white';
-            case 'LOW': return 'bg-teal-500 text-white';
-            default: return 'bg-slate-500 text-white';
+        switch (priority.toLowerCase()) {
+            case 'high': return 'bg-red-100 text-red-700 border-red-200';
+            case 'medium': return 'bg-amber-100 text-amber-700 border-amber-200';
+            case 'low': return 'bg-green-100 text-green-700 border-green-200';
+            default: return 'bg-gray-100 text-gray-700 border-gray-200';
         }
     };
 
     const getCategoryColor = (category) => {
         switch (category) {
-            case 'Health': return 'bg-teal-100 text-teal-800';
-            case 'Work': return 'bg-slate-200 text-slate-800';
-            case 'Personal': return 'bg-teal-50 text-teal-700';
-            default: return 'bg-slate-100 text-slate-800';
+            case 'Health': return 'bg-teal-50 text-teal-700 border-teal-200';
+            case 'Work': return 'bg-blue-50 text-blue-700 border-blue-200';
+            case 'Personal': return 'bg-purple-50 text-purple-700 border-purple-200';
+            default: return 'bg-gray-50 text-gray-700 border-gray-200';
         }
     };
 
-    const autoScheduleTasks = () => {
-        let currentTime = startTime;
-        const updatedTasks = tasks.map(task => {
-            if (!task.completed) {
-                const [hours, minutes] = currentTime.split(':').map(Number);
-                const taskDuration = task.estimatedDuration || 30;
-                const totalMinutes = hours * 60 + minutes + taskDuration;
-                const newEndHours = Math.floor(totalMinutes / 60);
-                const newEndMinutes = totalMinutes % 60;
+    // Format date for display
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        const todayDate = new Date();
+        const tomorrowDate = new Date(todayDate);
+        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
 
-                const newTask = {
-                    ...task,
-                    startTime: currentTime,
-                    endTime: `${String(newEndHours).padStart(2, '0')}:${String(newEndMinutes).padStart(2, '0')}`
-                };
-
-                currentTime = newTask.endTime;
-                return newTask;
-            }
-            return task;
-        });
-
-        setTasks(updatedTasks);
+        if (date.toDateString() === todayDate.toDateString()) {
+            return 'Today';
+        } else if (date.toDateString() === tomorrowDate.toDateString()) {
+            return 'Tomorrow';
+        } else if (date < todayDate) {
+            return 'Overdue';
+        } else {
+            return date.toLocaleDateString();
+        }
     };
 
-    // Fetch tasks on component mount
-    useEffect(() => {
-        fetchTasks();
-    }, []);
+    const formatTime = (dateString) => {
+        return new Date(dateString).toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+    };
+
+    // Check if task is overdue
+    const isOverdue = (task) => {
+        const dueDate = new Date(task.due_date);
+        const todayDate = new Date();
+        todayDate.setHours(23, 59, 59, 999);
+        return dueDate < todayDate && !task.completed;
+    };
+
+    // Helper functions for date selector
+    const isToday = (date) => {
+        const today = new Date();
+        return date.toDateString() === today.toDateString();
+    };
+
+    const isSelectedDate = (date) => {
+        return date.toDateString() === selectedDate.toDateString();
+    };
+
+    const formatSelectorDate = (date) => {
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric'
+        });
+    };
 
     // Loading state
     if (loading) {
         return (
-            <div className="w-full">
-                <div className="bg-white shadow-sm p-8 rounded-xl text-center">
-                    <Loader2 className="mx-auto mb-4 w-8 h-8 text-teal-600 animate-spin" />
-                    <p className="text-slate-600">Loading your tasks...</p>
+            <div className="mx-auto p-6 max-w-4xl">
+                <div className="bg-white shadow-sm p-12 border border-gray-100 rounded-2xl text-center">
+                    <div className="inline-flex justify-center items-center bg-blue-50 mb-4 rounded-full w-16 h-16">
+                        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                    </div>
+                    <h3 className="mb-2 font-semibold text-gray-900 text-lg">Loading your tasks</h3>
+                    <p className="text-gray-500">Please wait while we fetch your schedule</p>
                 </div>
             </div>
         );
@@ -178,15 +205,18 @@ const TaskCard = () => {
     // Error state
     if (error) {
         return (
-            <div className="w-full">
-                <div className="bg-white shadow-sm p-8 border border-red-200 rounded-xl text-center">
-                    <AlertCircle className="mx-auto mb-4 w-8 h-8 text-red-500" />
-                    <h3 className="mb-2 font-semibold text-red-800">Error Loading Tasks</h3>
-                    <p className="mb-4 text-red-600">{error}</p>
+            <div className="mx-auto p-6 max-w-4xl">
+                <div className="bg-white shadow-sm p-12 border border-red-200 rounded-2xl text-center">
+                    <div className="inline-flex justify-center items-center bg-red-50 mb-4 rounded-full w-16 h-16">
+                        <AlertCircle className="w-8 h-8 text-red-500" />
+                    </div>
+                    <h3 className="mb-2 font-semibold text-gray-900 text-lg">Unable to load tasks</h3>
+                    <p className="mb-6 text-gray-600">{error}</p>
                     <button
                         onClick={fetchTasks}
-                        className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-medium text-white transition-colors duration-200"
+                        className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 px-6 py-2 rounded-lg font-medium text-white transition-colors"
                     >
+                        <RefreshCw className="w-4 h-4" />
                         Try Again
                     </button>
                 </div>
@@ -195,142 +225,233 @@ const TaskCard = () => {
     }
 
     return (
-        <div className="w-full">
+        <div className="space-y-6 mx-auto p-6 max-w-6xl">
             {/* Header */}
-            <div className="bg-white shadow-sm mb-4 sm:mb-6 p-4 sm:p-6 rounded-xl">
-                <div className="flex flex-col gap-4">
-                    <div className="flex sm:flex-row flex-col justify-between sm:items-center gap-3">
-                        <h1 className="font-bold text-slate-800 text-lg sm:text-2xl">Today's Tasks ({tasks.length})</h1>
-
-                        <div className="flex gap-2">
-                            <button
-                                onClick={fetchTasks}
-                                className="flex justify-center items-center gap-2 bg-slate-600 hover:bg-slate-700 px-3 sm:px-4 py-2 rounded-lg font-medium text-white text-xs sm:text-sm transition-colors duration-200"
-                            >
-                                <Loader2 className="w-3 sm:w-4 h-3 sm:h-4" />
-                                Refresh
-                            </button>
-
-                            <button
-                                onClick={autoScheduleTasks}
-                                className="flex justify-center items-center gap-2 bg-teal-600 hover:bg-teal-700 px-3 sm:px-4 py-2 rounded-lg font-medium text-white text-xs sm:text-sm transition-colors duration-200"
-                            >
-                                <Calendar className="w-3 sm:w-4 h-3 sm:h-4" />
-                                <span className="hidden sm:inline">Auto-Schedule Tasks</span>
-                                <span className="sm:hidden">Auto-Schedule</span>
-                            </button>
+            <div className="bg-white shadow-sm p-6 border border-gray-100 rounded-2xl">
+                <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="flex justify-center items-center bg-blue-100 rounded-xl w-10 h-10">
+                            <Calendar className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                            <h1 className="font-bold text-gray-900 text-2xl">Task Dashboard</h1>
+                            <p className="text-gray-500 text-sm">
+                                {selectedDateTasks.length} tasks • {selectedDateTasks.filter(t => t.completed).length} completed
+                            </p>
                         </div>
                     </div>
 
-                    <div className="flex sm:flex-row flex-col items-start sm:items-center gap-3 sm:gap-4">
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <Clock className="w-4 sm:w-5 h-4 sm:h-5 text-slate-500" />
-                            <span className="text-slate-600 text-xs sm:text-sm">Start Time:</span>
-                            <input
-                                type="time"
-                                value={startTime}
-                                onChange={(e) => setStartTime(e.target.value)}
-                                className="flex-1 sm:flex-none px-2 py-1 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-xs sm:text-sm"
-                            />
-                        </div>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={fetchTasks}
+                            className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg font-medium text-gray-700 transition-colors"
+                        >
+                            <RefreshCw className="w-4 h-4" />
+                            Refresh
+                        </button>
                     </div>
-
-                    <p className="text-slate-600 text-xs sm:text-sm">
-                        Set your preferred start time and click "Auto-Schedule" to automatically assign times to all tasks based on their duration.
-                    </p>
                 </div>
             </div>
 
-            {/* Task Cards */}
-            <div className="space-y-3 sm:space-y-4">
-                {tasks.map((task) => (
-                    <div
-                        key={task.id}
-                        className={`bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 p-4 sm:p-6 border-l-4 ${task.completed ? 'border-teal-500 bg-teal-50/30' : 'border-transparent'
+            {/* Date Selector */}
+            <div className="bg-white shadow-sm p-6 border border-gray-200 rounded-2xl">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="font-semibold text-gray-900 text-lg">Select Date</h2>
+                    <div className="flex items-center gap-2">
+                        <button className="hover:bg-gray-100 p-2 rounded-lg transition-colors">
+                            <ChevronLeft className="w-5 h-5 text-gray-600" />
+                        </button>
+                        <button className="hover:bg-gray-100 p-2 rounded-lg transition-colors">
+                            <ChevronRight className="w-5 h-5 text-gray-600" />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex gap-2 pb-2 overflow-x-auto">
+                    {dateRange.map((date, index) => {
+                        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                        const dayNumber = date.getDate();
+                        const isSelected = isSelectedDate(date);
+                        const isTodayDate = isToday(date);
+
+                        return (
+                            <button
+                                key={index}
+                                onClick={() => setSelectedDate(date)}
+                                className={`flex flex-col items-center justify-center min-w-[80px] h-20 rounded-xl transition-all duration-200 ${isSelected
+                                        ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
+                                        : isTodayDate
+                                            ? 'bg-green-50 text-green-700 border-2 border-green-200'
+                                            : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border-2 border-transparent'
+                                    }`}
+                            >
+                                <span className="mb-1 font-medium text-xs">{dayName}</span>
+                                <span className="font-bold text-xl">{dayNumber}</span>
+                                {isTodayDate && (
+                                    <span className="mt-1 font-medium text-green-600 text-xs">Today</span>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Task List */}
+            <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                    <h3 className="font-semibold text-gray-900 text-xl">
+                        Tasks for {isToday(selectedDate) ? 'Today' : formatSelectorDate(selectedDate)}
+                    </h3>
+                    <span className="text-gray-500 text-sm">
+                        {selectedDateTasks.length} task{selectedDateTasks.length !== 1 ? 's' : ''}
+                    </span>
+                </div>
+
+                {selectedDateTasks.map((task) => {
+                    const taskOverdue = isOverdue(task);
+                    
+                    return (
+                        <div
+                            key={task.id}
+                            className={`bg-white rounded-xl shadow-sm border transition-all duration-200 hover:shadow-md ${
+                                task.completed 
+                                    ? 'border-green-200 bg-green-50/30' 
+                                    : taskOverdue 
+                                        ? 'border-red-200 bg-red-50/20'
+                                        : 'border-gray-200 hover:border-blue-200'
                             }`}
-                    >
-                        <div className="flex items-start gap-2 sm:gap-4">
-                            {/* Drag Handle - Hidden on mobile */}
-                            <div className="hidden sm:flex flex-col gap-1 mt-1 cursor-grab active:cursor-grabbing">
-                                <div className="bg-slate-400 rounded-full w-1 h-1"></div>
-                                <div className="bg-slate-400 rounded-full w-1 h-1"></div>
-                                <div className="bg-slate-400 rounded-full w-1 h-1"></div>
-                                <div className="bg-slate-400 rounded-full w-1 h-1"></div>
-                                <div className="bg-slate-400 rounded-full w-1 h-1"></div>
-                                <div className="bg-slate-400 rounded-full w-1 h-1"></div>
-                            </div>
+                        >
+                            <div className="p-6">
+                                <div className="flex items-start gap-4">
+                                    {/* Completion Toggle */}
+                                    <button
+                                        onClick={() => toggleTaskCompletion(task.id)}
+                                        disabled={processingTasks.has(task.id)}
+                                        className="flex-shrink-0 mt-1 hover:scale-110 transition-transform"
+                                    >
+                                        {processingTasks.has(task.id) ? (
+                                            <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+                                        ) : task.completed ? (
+                                            <CheckCircle className="w-6 h-6 text-green-500" />
+                                        ) : (
+                                            <Circle className="w-6 h-6 text-gray-400 hover:text-blue-500" />
+                                        )}
+                                    </button>
 
-                            {/* Task Content */}
-                            <div className="flex-1 min-w-0">
-                                <div className="flex flex-col gap-3 mb-3">
-                                    <div className="flex justify-between items-start gap-3">
-                                        <div className="flex flex-1 items-center gap-2 sm:gap-3 min-w-0">
-                                            <button
-                                                onClick={() => toggleTaskCompletion(task.id)}
-                                                className="flex-shrink-0 hover:scale-110 transition-transform duration-200"
-                                            >
-                                                {task.completed ? (
-                                                    <CheckCircle className="w-4 sm:w-5 h-4 sm:h-5 text-teal-500" />
-                                                ) : (
-                                                    <Circle className="w-4 sm:w-5 h-4 sm:h-5 text-slate-400 hover:text-slate-600" />
-                                                )}
-                                            </button>
-
+                                    {/* Task Content */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex justify-between items-start mb-3">
                                             <div className="flex-1 min-w-0">
-                                                <h3 className={`font-semibold text-base sm:text-lg ${task.completed ? 'line-through text-slate-500' : 'text-slate-800'} truncate`}>
+                                                <h3 className={`text-lg font-semibold ${
+                                                    task.completed ? 'line-through text-gray-500' : 'text-gray-900'
+                                                }`}>
                                                     {task.title}
                                                 </h3>
+                                                {taskOverdue && (
+                                                    <span className="inline-block bg-red-100 mt-1 px-2 py-1 rounded-full text-red-600 text-xs">
+                                                        Overdue
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className="flex items-center gap-2 ml-4">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getPriorityColor(task.priority)}`}>
+                                                    {task.priority.toLowerCase() === 'high' && <Star className="inline mr-1 w-3 h-3" />}
+                                                    {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                                                </span>
+
+                                                <button
+                                                    onClick={() => handleDeleteTask(task.id)}
+                                                    disabled={processingTasks.has(task.id)}
+                                                    className="hover:bg-red-50 p-1.5 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-2">
-                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
-                                                {task.priority}
+                                        {task.description && (
+                                            <p className={`text-gray-600 mb-4 ${
+                                                task.completed ? 'line-through opacity-70' : ''
+                                            }`}>
+                                                {task.description}
+                                            </p>
+                                        )}
+
+                                        {/* Task Details */}
+                                        <div className="flex flex-wrap items-center gap-4 text-sm">
+                                            <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
+                                                <Calendar className="w-4 h-4 text-gray-500" />
+                                                <span className="font-medium text-gray-700">
+                                                    Due: {formatDate(task.due_date)}
+                                                </span>
+                                                <span className="text-gray-500">
+                                                    {formatTime(task.due_date)}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg">
+                                                <Clock className="w-4 h-4 text-gray-500" />
+                                                <span className="font-medium text-gray-700">
+                                                    {task.estimatedDuration}min
+                                                </span>
+                                            </div>
+
+                                            <span className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                                                task.status === 'completed'
+                                                    ? 'bg-green-50 text-green-700 border-green-200'
+                                                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                                            }`}>
+                                                {task.status === 'completed' && <CheckCircle className="inline mr-1 w-3 h-3" />}
+                                                {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
                                             </span>
-                                            <button className="flex-shrink-0 hover:bg-slate-100 p-1 rounded-md transition-colors duration-200">
-                                                <MoreVertical className="w-4 h-4 text-slate-500" />
+
+                                            <span className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${getCategoryColor(task.category)}`}>
+                                                <Tag className="inline mr-1 w-3 h-3" />
+                                                {task.category}
+                                            </span>
+
+                                            <button 
+                                                onClick={() => navigate(`/tasks/${task.id}`)}
+                                                className="inline-flex items-center gap-1 hover:bg-blue-50 px-3 py-1.5 rounded-lg font-medium text-blue-600 text-xs transition-colors"
+                                            >
+                                                View Details
                                             </button>
                                         </div>
-                                    </div>
-                                </div>
 
-                                <p className={`text-slate-600 mb-3 sm:mb-4 leading-relaxed text-sm sm:text-base ${task.completed ? 'line-through' : ''}`}>
-                                    {task.description}
-                                </p>
-
-                                <div className="flex sm:flex-row flex-col flex-wrap items-start sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm">
-                                    <div className="flex items-center gap-2">
-                                        <Clock className="w-3 sm:w-4 h-3 sm:h-4 text-slate-500" />
-                                        <span className="text-slate-600">
-                                            {task.startTime} — {task.endTime}
-                                        </span>
-                                    </div>
-
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${task.status === 'Completed' ? 'bg-teal-100 text-teal-800' : 'bg-slate-100 text-slate-800'
-                                            }`}>
-                                            {task.status}
-                                        </span>
-
-                                        <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${getCategoryColor(task.category)}`}>
-                                            {task.category}
-                                        </span>
+                                        {/* Show completion info if completed */}
+                                        {task.completed && task.completed_at && (
+                                            <div className="mt-3 pt-3 border-gray-100 border-t">
+                                                <p className="text-gray-500 text-xs">
+                                                    Completed on {formatDate(task.completed_at)} at {formatTime(task.completed_at)}
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Empty State */}
-            {tasks.length === 0 && (
-                <div className="bg-white shadow-sm p-8 sm:p-12 rounded-xl text-center">
-                    <div className="flex justify-center items-center bg-slate-100 mx-auto mb-4 rounded-full w-12 sm:w-16 h-12 sm:h-16">
-                        <Calendar className="w-6 sm:w-8 h-6 sm:h-8 text-slate-400" />
+            {selectedDateTasks.length === 0 && (
+                <div className="bg-white shadow-sm p-12 border border-gray-100 rounded-2xl text-center">
+                    <div className="inline-flex justify-center items-center bg-blue-50 mb-4 rounded-full w-16 h-16">
+                        <Calendar className="w-8 h-8 text-blue-600" />
                     </div>
-                    <h3 className="mb-2 font-semibold text-slate-800 text-base sm:text-lg">No tasks scheduled</h3>
-                    <p className="text-slate-600 text-sm sm:text-base">Add some tasks to get started with your daily schedule.</p>
+                    <h3 className="mb-2 font-semibold text-gray-900 text-xl">No tasks for {isToday(selectedDate) ? 'today' : 'this date'}</h3>
+                    <p className="mx-auto mb-6 max-w-md text-gray-500">
+                        You don't have any tasks scheduled for {isToday(selectedDate) ? 'today' : 'this date'}. Add some tasks to get started with organizing your schedule.
+                    </p>
+                    <button 
+                        onClick={() => navigate('/add-task')}
+                        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-medium text-white transition-colors"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Add New Task
+                    </button>
                 </div>
             )}
         </div>

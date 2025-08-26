@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Clock, Calendar, Tag, AlertCircle, Plus, X } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
+import { useTasks } from '../../context/TaskProvider.jsx';
 
 const AddTask = ({ onSubmit, onCancel }) => {
     // Get getToken and userId from the hook
     const { getToken, userId } = useAuth();
+    const { addTask } = useTasks();
 
     const [formData, setFormData] = useState({
         title: '',
@@ -12,8 +14,7 @@ const AddTask = ({ onSubmit, onCancel }) => {
         status: 'pending',
         priority: 'medium',
         estimatedDuration: 60,
-        recurrence: 'today',
-        reminder: false,
+        start_date: '',
         due_date: '',
         tags: []
     });
@@ -26,18 +27,6 @@ const AddTask = ({ onSubmit, onCancel }) => {
         { value: 'low', label: 'Low Priority', color: 'bg-green-100 text-green-800' },
         { value: 'medium', label: 'Medium Priority', color: 'bg-yellow-100 text-yellow-800' },
         { value: 'high', label: 'High Priority', color: 'bg-red-100 text-red-800' }
-    ];
-
-    const recurrenceOptions = [
-        { value: 'today', label: 'Today Only' },
-        { value: 'daily', label: 'Daily' },
-        { value: 'monday', label: 'Every Monday' },
-        { value: 'tuesday', label: 'Every Tuesday' },
-        { value: 'wednesday', label: 'Every Wednesday' },
-        { value: 'thursday', label: 'Every Thursday' },
-        { value: 'friday', label: 'Every Friday' },
-        { value: 'saturday', label: 'Every Saturday' },
-        { value: 'sunday', label: 'Every Sunday' }
     ];
 
     const handleInputChange = (e) => {
@@ -77,6 +66,10 @@ const AddTask = ({ onSubmit, onCancel }) => {
             newErrors.title = 'Task title is required';
         }
 
+        if (!formData.start_date) {
+            newErrors.start_date = 'Start date is required';
+        }
+
         if (!formData.due_date) {
             newErrors.due_date = 'Due date is required';
         }
@@ -107,27 +100,30 @@ const AddTask = ({ onSubmit, onCancel }) => {
                 user_id: userId // Associate the task with the authenticated user's ID
             };
 
-            // Send data to the backend API endpoint
-            const response = await fetch('http://localhost:3000/api/tasks', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(dataToSubmit),
-            });
-
-            console.log("Response", response);
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to create task');
-            }
-
-            const createdTask = await response.json();
+            const createdTask = await addTask(dataToSubmit);
             console.log("Task created successfully:", createdTask);
+            onCancel(); // Close the form after successful creation
+            // // Send data to the backend API endpoint
+            // const response = await fetch('http://localhost:3000/api/tasks', {
+            //     method: 'POST',
+            //     headers: {
+            //         'Content-Type': 'application/json',
+            //         'Authorization': `Bearer ${token}`
+            //     },
+            //     body: JSON.stringify(dataToSubmit),
+            // });
 
-            onSubmit?.(createdTask);
+            // console.log("Response", response);
+
+            // if (!response.ok) {
+            //     const errorData = await response.json();
+            //     throw new Error(errorData.message || 'Failed to create task');
+            // }
+
+            // const createdTask = await response.json();
+            // console.log("Task created successfully:", createdTask);
+
+            // onSubmit?.(createdTask);
 
         } catch (error) {
             console.error('Error creating task:', error);
@@ -249,25 +245,28 @@ const AddTask = ({ onSubmit, onCancel }) => {
 
                     {/* Recurrence and Due Date Row */}
                     <div className="gap-6 grid md:grid-cols-2">
-                        {/* Recurrence */}
+                        {/* Start Date */}
                         <div className="space-y-2">
                             <label className="block font-semibold text-slate-700 text-sm">
-                                Recurrence
+                                Start Date *
                             </label>
-                            <select
-                                name="recurrence"
-                                value={formData.recurrence}
-                                onChange={handleInputChange}
-                                className="bg-white px-4 py-3 border border-slate-300 focus:border-transparent rounded-lg focus:ring-2 focus:ring-teal-500 w-full transition-all duration-200"
-                            >
-                                {recurrenceOptions.map(option => (
-                                    <option key={option.value} value={option.value}>
-                                        {option.label}
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="relative">
+                                <input
+                                    type="datetime-local"
+                                    name="start_date"
+                                    value={formData.start_date}
+                                    onChange={handleInputChange}
+                                    className={`w-full px-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-teal-500 focus:border-transparent ${errors.start_date ? 'border-red-300 bg-red-50' : 'border-slate-300'}`}
+                                />
+                                <Calendar className="top-3.5 right-3 absolute w-5 h-5 text-slate-400 pointer-events-none" />
+                            </div>
+                            {errors.start_date && (
+                                <p className="flex items-center gap-1 slide-in-from-left-2 text-red-500 text-sm animate-in">
+                                    <AlertCircle className="w-4 h-4" />
+                                    {errors.start_date}
+                                </p>
+                            )}
                         </div>
-
                         {/* Due Date */}
                         <div className="space-y-2">
                             <label className="block font-semibold text-slate-700 text-sm">
@@ -293,26 +292,7 @@ const AddTask = ({ onSubmit, onCancel }) => {
                         </div>
                     </div>
 
-                    {/* Reminder Toggle */}
-                    <div className="flex justify-between items-center bg-slate-50 p-4 rounded-lg">
-                        <div className="flex items-center gap-3">
-                            <AlertCircle className="w-5 h-5 text-slate-600" />
-                            <div>
-                                <span className="font-medium text-slate-700">Enable Reminder</span>
-                                <p className="text-slate-500 text-sm">Get notified about this task</p>
-                            </div>
-                        </div>
-                        <label className="inline-flex relative items-center cursor-pointer">
-                            <input
-                                type="checkbox"
-                                name="reminder"
-                                checked={formData.reminder}
-                                onChange={handleInputChange}
-                                className="sr-only peer"
-                            />
-                            <div className="peer after:top-[2px] after:absolute bg-slate-300 after:bg-white peer-checked:bg-teal-600 peer-checked:after:border-white rounded-full after:rounded-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-300 w-11 after:w-5 h-6 after:h-5 after:content-[''] after:transition-all rtl:peer-checked:after:-translate-x-full peer-checked:after:translate-x-full after:start-[2px]"></div>
-                        </label>
-                    </div>
+
 
                     {/* Tags */}
                     <div className="space-y-3">

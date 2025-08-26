@@ -15,6 +15,7 @@ import {
     FaLink,
     FaExpandArrowsAlt
 } from 'react-icons/fa';
+import { ChevronDown,ChevronUp } from 'lucide-react';
 
 const DrawingBoard = () => {
     const canvasRef = useRef(null);
@@ -542,189 +543,206 @@ const DrawingBoard = () => {
     return (
         <div className="flex flex-col bg-gradient-to-br from-slate-50 to-blue-50 w-full h-screen overflow-hidden">
             {/* Modern Toolbar */}
-            <div className={`toolbar transition-all duration-300 ease-in-out ${isToolbarCollapsed ? 'h-16' : 'h-auto'} bg-white/90 backdrop-blur-xl shadow-2xl border-b border-white/20`}>
-                <div className="flex justify-between items-center p-4">
-                    {/* Logo/Title */}
-                    <div className="flex items-center space-x-3">
-                        <div className="flex justify-center items-center bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl w-10 h-10">
-                            <FaPalette className="text-white text-lg" />
-                        </div>
-                        <h1 className="bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 font-bold text-transparent text-xl">
-                            DrawBoard Pro
-                        </h1>
-                    </div>
+            <div className={`toolbar fixed  left-0 right-0 z-50 transition-all duration-300 ease-in-out 
+    ${isToolbarCollapsed ? 'h-16' : 'h-auto'} 
+    bg-gradient-to-r from-teal-500 to-teal-400 backdrop-blur-xl 
+    shadow-lg border-b border-white/10`}>
+    
+    {/* Header with Toggle */}
+    <div className="flex justify-between items-center px-6 py-3 border border-white/50">
+        {/* Logo/Title */}
+        <div className="flex items-center space-x-4">
+            <div className="flex justify-center items-center bg-white/10 backdrop-blur-sm border border-white/90 rounded-xl w-10 h-10">
+                <FaPalette className="text-white text-xl" />
+            </div>
+            <h1 className="font-bold text-white text-2xl">
+                DrawBoard
+            </h1>
+        </div>
 
-                    {/* Mobile toggle */}
+        {/* Toggle Button */}
+        <button
+            onClick={() => setIsToolbarCollapsed(!isToolbarCollapsed)}
+            className="group relative bg-white/10 hover:bg-white/20 p-2.5 border border-white/20 hover:border-white/30 rounded-xl hover:scale-105 transition-all duration-300"
+        >
+            {isToolbarCollapsed ? (
+                <ChevronDown className="w-6 h-6 text-white" />
+            ) : (
+                <ChevronUp className="w-6 h-6 text-white" />
+            )}
+            <span className="-bottom-12 left-1/2 absolute bg-black/75 opacity-0 group-hover:opacity-100 px-3 py-1.5 rounded-lg text-white text-xs whitespace-nowrap transition-all -translate-x-1/2 duration-200 transform">
+                {isToolbarCollapsed ? 'Expand Toolbar' : 'Collapse Toolbar'}
+            </span>
+        </button>
+    </div>
+
+    {/* Tools Container */}
+    <div className={`${isToolbarCollapsed ? 'max-h-0' : 'max-h-[500px]'} 
+        overflow-hidden transition-all duration-300 ease-in-out`}>
+        <div className="flex flex-wrap items-center gap-4 bg-white/5 p-6">
+            {/* Tools Section */}
+            <div className="flex flex-wrap gap-2">
+                {tools.map((t) => (
                     <button
-                        onClick={() => setIsToolbarCollapsed(!isToolbarCollapsed)}
-                        className="md:hidden bg-gray-100 hover:bg-gray-200 p-2 rounded-lg transition-colors"
+                        key={t.id}
+                        onClick={() => setTool(t.id)}
+                        className={`group relative p-3 rounded-xl transition-all duration-200 
+                            ${tool === t.id
+                                ? 'bg-white text-steal-600 shadow-lg shadow-blue-500/20'
+                                : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+                            } hover:scale-105`}
+                        title={t.name}
                     >
-                        {isToolbarCollapsed ? <FaBars /> : <FaTimes />}
+                        <t.icon size={20} />
+                        <div className="-top-12 left-1/2 absolute bg-black/75 opacity-0 group-hover:opacity-100 px-3 py-1.5 rounded-lg text-white text-xs whitespace-nowrap transition-all -translate-x-1/2 duration-200 transform">
+                            {t.name}
+                        </div>
                     </button>
-                </div>
+                ))}
+            </div>
 
-                {/* Tools Container */}
-                <div className={`${isToolbarCollapsed ? 'hidden md:flex' : 'flex'} flex-col md:flex-row flex-wrap items-center gap-4 px-4 pb-4`}>
-                    {/* Tools */}
-                    <div className="flex flex-wrap gap-2">
-                        {tools.map((t) => (
+            {/* Vertical Divider */}
+            <div className="hidden md:block bg-white/20 w-px h-10"></div>
+
+            {/* Color Palettes */}
+            <div className="flex sm:flex-row flex-col gap-4">
+                {/* Stroke Colors */}
+                <div className="flex items-center gap-3">
+                    <span className="font-medium text-gray-600 text-sm whitespace-nowrap">Stroke</span>
+                    <div className="flex gap-2">
+                        {colors.map((c) => (
                             <button
-                                key={t.id}
-                                onClick={() => setTool(t.id)}
-                                className={`group relative p-3 rounded-2xl transition-all duration-200 transform hover:scale-105 ${tool === t.id
-                                        ? `bg-gradient-to-r ${t.color} text-white shadow-xl shadow-purple-500/25`
-                                        : 'bg-white/70 hover:bg-white text-gray-600 hover:shadow-lg border border-gray-200'
+                                key={c}
+                                onClick={() => setStrokeColor(c)}
+                                className={`w-8 h-8 rounded-full border-3 transition-all duration-200 transform hover:scale-110 ${strokeColor === c
+                                    ? 'border-gray-900 shadow-lg scale-110'
+                                    : 'border-white shadow-md hover:shadow-lg'
                                     }`}
-                                title={t.name}
-                            >
-                                <t.icon size={20} />
-                                <div className="-top-10 left-1/2 absolute bg-gray-900 opacity-0 group-hover:opacity-100 px-2 py-1 rounded text-white text-xs whitespace-nowrap transition-opacity -translate-x-1/2 duration-200 pointer-events-none transform">
-                                    {t.name}
-                                </div>
-                            </button>
+                                style={{ backgroundColor: c }}
+                            />
                         ))}
                     </div>
+                </div>
 
-                    {/* Divider */}
-                    <div className="hidden md:block bg-gray-300 w-px h-10"></div>
-
-                    {/* Color Palettes */}
-                    <div className="flex sm:flex-row flex-col gap-4">
-                        {/* Stroke Colors */}
-                        <div className="flex items-center gap-3">
-                            <span className="font-medium text-gray-600 text-sm whitespace-nowrap">Stroke</span>
-                            <div className="flex gap-2">
-                                {colors.map((c) => (
-                                    <button
-                                        key={c}
-                                        onClick={() => setStrokeColor(c)}
-                                        className={`w-8 h-8 rounded-full border-3 transition-all duration-200 transform hover:scale-110 ${strokeColor === c
-                                                ? 'border-gray-900 shadow-lg scale-110'
-                                                : 'border-white shadow-md hover:shadow-lg'
-                                            }`}
-                                        style={{ backgroundColor: c }}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Fill Colors */}
-                        <div className="flex items-center gap-3">
-                            <span className="font-medium text-gray-600 text-sm whitespace-nowrap">Fill</span>
-                            <div className="flex gap-2">
-                                {fillColors.map((c) => (
-                                    <button
-                                        key={c}
-                                        onClick={() => setFillColor(c)}
-                                        className={`w-8 h-8 rounded-full border-3 transition-all duration-200 transform hover:scale-110 relative ${fillColor === c
-                                                ? 'border-gray-900 shadow-lg scale-110'
-                                                : 'border-white shadow-md hover:shadow-lg'
-                                            }`}
-                                        style={{ backgroundColor: c === 'transparent' ? '#ffffff' : c }}
-                                    >
-                                        {c === 'transparent' && (
-                                            <div className="absolute inset-0 flex justify-center items-center">
-                                                <div className="bg-red-500 rounded-full w-6 h-0.5 rotate-45 transform"></div>
-                                            </div>
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Stroke Width */}
-                    <div className="flex items-center gap-3">
-                        <span className="font-medium text-gray-600 text-sm whitespace-nowrap">Size</span>
-                        <input
-                            type="range"
-                            min="1"
-                            max="20"
-                            value={strokeWidth}
-                            onChange={(e) => setStrokeWidth(Number(e.target.value))}
-                            className="bg-gray-200 rounded-lg w-24 h-2 appearance-none cursor-pointer slider"
-                        />
-                        <span className="w-8 font-medium text-gray-600 text-sm">{strokeWidth}px</span>
-                    </div>
-
-                    {/* Divider */}
-                    <div className="hidden md:block bg-gray-300 w-px h-10"></div>
-
-                    {/* Action Buttons */}
+                {/* Fill Colors */}
+                <div className="flex items-center gap-3">
+                    <span className="font-medium text-gray-600 text-sm whitespace-nowrap">Fill</span>
                     <div className="flex gap-2">
-                        {selectedShape !== null && (
-                            <>
-                                <button
-                                    onClick={connectShapes}
-                                    className={`p-3 rounded-2xl transition-all duration-200 ${connectingFrom !== null
-                                            ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
-                                            : 'bg-white/70 hover:bg-orange-50 text-orange-600 border border-orange-200 hover:shadow-lg'
-                                        }`}
-                                    title="Connect shapes"
-                                >
-                                    <FaLink size={16} />
-                                </button>
-                                <button
-                                    onClick={deleteSelected}
-                                    className="bg-gradient-to-r from-red-500 hover:from-red-600 to-pink-500 hover:to-pink-600 shadow-lg hover:shadow-xl p-3 rounded-2xl text-white hover:scale-105 transition-all duration-200 transform"
-                                    title="Delete selected"
-                                >
-                                    <FaTrash size={16} />
-                                </button>
-                            </>
-                        )}
-
-                        <button
-                            onClick={undo}
-                            className="bg-gradient-to-r from-blue-500 hover:from-blue-600 to-indigo-500 hover:to-indigo-600 shadow-lg hover:shadow-xl p-3 rounded-2xl text-white hover:scale-105 transition-all duration-200 transform"
-                            title="Undo (Ctrl+Z)"
-                            disabled={historyIndex < 0}
-                        >
-                            <FaUndo size={16} />
-                        </button>
-
-                        <button
-                            onClick={clearCanvas}
-                            className="bg-gradient-to-r from-gray-500 hover:from-gray-600 to-slate-600 hover:to-slate-700 shadow-lg hover:shadow-xl p-3 rounded-2xl text-white hover:scale-105 transition-all duration-200 transform"
-                            title="Clear canvas"
-                        >
-                            <FaTrash size={16} />
-                        </button>
-
-                        <button
-                            onClick={downloadCanvas}
-                            className="bg-gradient-to-r from-green-500 hover:from-green-600 to-emerald-500 hover:to-emerald-600 shadow-lg hover:shadow-xl p-3 rounded-2xl text-white hover:scale-105 transition-all duration-200 transform"
-                            title="Download image"
-                        >
-                            <FaDownload size={16} />
-                        </button>
-                    </div>
-
-                    {/* Status indicators */}
-                    <div className="flex items-center gap-4">
-                        {connectingFrom !== null && (
-                            <div className="flex items-center space-x-2 bg-orange-50 px-4 py-2 border border-orange-200 rounded-full">
-                                <FaExpandArrowsAlt className="text-orange-500" />
-                                <span className="font-medium text-orange-600 text-sm">
-                                    Click another shape to connect
-                                </span>
-                            </div>
-                        )}
-
-                        {isTyping && (
-                            <div className="flex items-center space-x-2 bg-blue-50 px-4 py-2 border border-blue-200 rounded-full">
-                                <FaFont className="text-blue-500" />
-                                <span className="font-medium text-blue-600 text-sm">
-                                    Type text, press Enter to finish
-                                </span>
-                            </div>
-                        )}
+                        {fillColors.map((c) => (
+                            <button
+                                key={c}
+                                onClick={() => setFillColor(c)}
+                                className={`w-8 h-8 rounded-full border-3 transition-all duration-200 transform hover:scale-110 relative ${fillColor === c
+                                    ? 'border-gray-900 shadow-lg scale-110'
+                                    : 'border-white shadow-md hover:shadow-lg'
+                                    }`}
+                                style={{ backgroundColor: c === 'transparent' ? '#ffffff' : c }}
+                            >
+                                {c === 'transparent' && (
+                                    <div className="absolute inset-0 flex justify-center items-center">
+                                        <div className="bg-red-500 rounded-full w-6 h-0.5 rotate-45 transform"></div>
+                                    </div>
+                                )}
+                            </button>
+                        ))}
                     </div>
                 </div>
             </div>
 
+            {/* Stroke Width */}
+            <div className="flex items-center gap-3">
+                <span className="font-medium text-gray-600 text-sm whitespace-nowrap">Size</span>
+                <input
+                    type="range"
+                    min="1"
+                    max="20"
+                    value={strokeWidth}
+                    onChange={(e) => setStrokeWidth(Number(e.target.value))}
+                    className="bg-gray-200 rounded-lg w-24 h-2 appearance-none cursor-pointer slider"
+                />
+                <span className="w-8 font-medium text-gray-600 text-sm">{strokeWidth}px</span>
+            </div>
+
+            {/* Vertical Divider */}
+            <div className="hidden md:block bg-white/20 w-px h-10"></div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+                {selectedShape !== null && (
+                    <>
+                        <button
+                            onClick={connectShapes}
+                            className={`p-3 rounded-xl transition-all duration-200 ${connectingFrom !== null
+                                ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg'
+                                : 'bg-white/10 hover:bg-orange-50 text-orange-600 border border-orange-200 hover:shadow-lg'
+                                }`}
+                            title="Connect shapes"
+                        >
+                            <FaLink size={16} />
+                        </button>
+                        <button
+                            onClick={deleteSelected}
+                            className="bg-gradient-to-r from-red-500 hover:from-red-600 to-pink-500 hover:to-pink-600 shadow-lg hover:shadow-xl p-3 rounded-xl text-white hover:scale-105 transition-all duration-200 transform"
+                            title="Delete selected"
+                        >
+                            <FaTrash size={16} />
+                        </button>
+                    </>
+                )}
+
+                <button
+                    onClick={undo}
+                    className="bg-gradient-to-r from-blue-500 hover:from-blue-600 to-indigo-500 hover:to-indigo-600 shadow-lg hover:shadow-xl p-3 rounded-xl text-white hover:scale-105 transition-all duration-200 transform"
+                    title="Undo (Ctrl+Z)"
+                    disabled={historyIndex < 0}
+                >
+                    <FaUndo size={16} />
+                </button>
+
+                <button
+                    onClick={clearCanvas}
+                    className="bg-gradient-to-r from-gray-500 hover:from-gray-600 to-slate-600 hover:to-slate-700 shadow-lg hover:shadow-xl p-3 rounded-xl text-white hover:scale-105 transition-all duration-200 transform"
+                    title="Clear canvas"
+                >
+                    <FaTrash size={16} />
+                </button>
+
+                <button
+                    onClick={downloadCanvas}
+                    className="bg-gradient-to-r from-green-500 hover:from-green-600 to-emerald-500 hover:to-emerald-600 shadow-lg hover:shadow-xl p-3 rounded-xl text-white hover:scale-105 transition-all duration-200 transform"
+                    title="Download image"
+                >
+                    <FaDownload size={16} />
+                </button>
+            </div>
+
+            {/* Status indicators */}
+            <div className="flex items-center gap-4">
+                {connectingFrom !== null && (
+                    <div className="flex items-center space-x-2 bg-orange-50 px-4 py-2 border border-orange-200 rounded-full">
+                        <FaExpandArrowsAlt className="text-orange-500" />
+                        <span className="font-medium text-orange-600 text-sm">
+                            Click another shape to connect
+                        </span>
+                    </div>
+                )}
+
+                {isTyping && (
+                    <div className="flex items-center space-x-2 bg-blue-50 px-4 py-2 border border-blue-200 rounded-full">
+                        <FaFont className="text-blue-500" />
+                        <span className="font-medium text-blue-600 text-sm">
+                            Type text, press Enter to finish
+                        </span>
+                    </div>
+                )}
+            </div>
+        </div>
+    </div>
+</div>
+
             {/* Canvas Container */}
-            <div className="relative flex-1 overflow-hidden">
+            <div className="relative flex-1 overflow-hidden" 
+    style={{ paddingTop: isToolbarCollapsed ? '64px' : '120px' }}>
                 <canvas
                     ref={canvasRef}
                     width={canvasSize.width}

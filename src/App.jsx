@@ -11,6 +11,8 @@ import ProtectedRoute from './components/ProtectedRoute.jsx';
 import TaskMateLoading from './Pages/Loading/TaskMateLoading.jsx';
 import DrawingBoard from './Pages/DrawingTool/DrawingBoard.jsx';
 import AIAssistant from './Pages/AIChat/AIAssistant.jsx';
+import TaskDetailsPage from './Pages/Dashboard/TaskDetailsPage.jsx';
+import Home from './Pages/Home/Home.jsx';
 
 function App() {
   return (
@@ -25,28 +27,7 @@ function App() {
       <Layout>
         <Routes>
           {/* Default redirect based on auth */}
-          <Route
-            path="/"
-            element={
-              <>
-                <SignedIn>
-                  <Navigate to="/dashboard" replace />
-                </SignedIn>
-                <SignedOut>
-                  <Navigate to="/sign-in" replace /> {/* or HomePage if you make one */}
-                </SignedOut>
-              </>
-            }
-          />
-          <Route
-            path="/"
-            element={
-              <SignedOut>
-                <Navigate to="/sign-in" replace />
-              </SignedOut>
-            }
-          />
-
+          <Route path="/" element={<Home />} />
           <Route path="/sign-in" element={<SignInPage />} />
           <Route path="/sign-up" element={<SignUpPage />} />
 
@@ -70,6 +51,22 @@ function App() {
             }
           />
           <Route
+            path="/drawing-tool"
+            element={
+              <ProtectedRoute>
+                <DrawingBoard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ai-assistant"
+            element={
+              <ProtectedRoute>
+                <AIAssistant />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/loading"
             element={
               <ProtectedRoute>
@@ -78,40 +75,17 @@ function App() {
             }
           />
           <Route
-            path="/drawing"
+            path="/tasks/:id"
             element={
               <ProtectedRoute>
-                <DrawingBoard />
-              </ProtectedRoute>
-            }
-          />
-        <Route
-            path="/ai"
-            element={
-              <ProtectedRoute>
-                <AIAssistant />
+                <TaskDetailsPage />
               </ProtectedRoute>
             }
           />
 
 
           {/* Catch all */}
-          <Route
-            path="*"
-            element={
-              <SignedIn>
-                <Navigate to="/dashboard" replace />
-              </SignedIn>
-            }
-          />
-          <Route
-            path="*"
-            element={
-              <SignedOut>
-                <Navigate to="/sign-in" replace />
-              </SignedOut>
-            }
-          />
+          <Route path="*" element={<Navigate to="/sign-in" replace />} />
         </Routes>
       </Layout>
     </div>
