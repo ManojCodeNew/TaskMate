@@ -35,6 +35,8 @@ export function TaskProvider({ children }) {
             if (!response.ok) throw new Error('Failed to fetch tasks');
 
             const data = await response.json();
+            console.log("Fetched tasks:", data);
+            
             setTasks(data);
         } catch (err) {
             setError(err.message);

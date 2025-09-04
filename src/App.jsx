@@ -13,7 +13,9 @@ import DrawingBoard from './Pages/DrawingTool/DrawingBoard.jsx';
 import AIAssistant from './Pages/AIChat/AIAssistant.jsx';
 import TaskDetailsPage from './Pages/Dashboard/TaskDetailsPage.jsx';
 import Home from './Pages/Home/Home.jsx';
-
+import TaskAnalytics from './Pages/TaskAnalytics/TaskAnalytics.jsx';
+// import NotesPage from './Pages/Notes/NotesPage.jsx';
+import Notes from './Pages/Notes/Notes.jsx';
 function App() {
   return (
     <div className="relative bg-gradient-to-br from-slate-200 via-blue-100 to-slate-300 min-h-screen overflow-hidden">
@@ -82,7 +84,22 @@ function App() {
               </ProtectedRoute>
             }
           />
-
+          <Route
+            path="/analytics"
+            element={
+              <ProtectedRoute>
+                <TaskAnalytics />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/Notes"
+            element={
+              <ProtectedRoute>
+                <Notes />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Catch all */}
           <Route path="*" element={<Navigate to="/sign-in" replace />} />

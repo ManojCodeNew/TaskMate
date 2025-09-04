@@ -335,7 +335,6 @@ What aspect would you like to focus on?`,
                             <ReactMarkdown
                                 rehypePlugins={[rehypeHighlight]}
                                 components={{
-                                    // ...existing markdown components...
                                 }}
                             >
                                 {line}

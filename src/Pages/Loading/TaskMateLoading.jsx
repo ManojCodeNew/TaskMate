@@ -1,110 +1,47 @@
-import React, { useRef, useState } from "react";
-import { Stage, Layer, Rect, Circle, Line } from "react-konva";
+import React from 'react';
+import { Loader2 } from 'lucide-react';
 
-function AdvancedDrawingBoard({ onSave }) {
-    const stageRef = useRef();
-    const [shapes, setShapes] = useState([]);
-    const [connections, setConnections] = useState([]);
-    const [selectedShape, setSelectedShape] = useState(null);
-
-    // Add shape
-    const addShape = (type) => {
-        const id = shapes.length + 1;
-        setShapes([
-            ...shapes,
-            {
-                id,
-                type,
-                x: 50,
-                y: 50,
-                width: 100,
-                height: 100,
-                radius: 50,
-                fill: "lightblue",
-            },
-        ]);
-    };
-
-    // Drag shape
-    const handleDrag = (e, id) => {
-        const newShapes = shapes.map((shape) =>
-            shape.id === id
-                ? { ...shape, x: e.target.x(), y: e.target.y() }
-                : shape
-        );
-        setShapes(newShapes);
-    };
-
-    // Connect shapes
-    const addConnection = (fromId, toId) => {
-        setConnections([...connections, { from: fromId, to: toId }]);
-    };
-
-    // Save drawing
-    const saveDrawing = () => {
-        const json = stageRef.current.toJSON();
-        onSave(json); // send to backend
-    };
-
+const TaskMateLoading = ({ message = "Loading task details", description = "Please wait while we fetch the task information" }) => {
     return (
-        <div className="top-[70px]">
-            <div >
-                <button onClick={() => addShape("rect")}>Add Rectangle</button>
-                <button onClick={() => addShape("circle")}>Add Circle</button>
-                <button onClick={saveDrawing}>Save</button>
+        <div className="mx-auto p-6 max-w-4xl">
+            <div className="bg-white shadow-lg p-12 border border-gray-100 rounded-2xl">
+                {/* Loading animation container */}
+                <div className="flex flex-col items-center">
+                    {/* Spinner with outer glow */}
+                    <div className="relative mb-6">
+                        {/* Pulsing background circle */}
+                        <div className="absolute inset-0 bg-blue-100 rounded-full animate-pulse"></div>
+                        
+                        {/* Spinning circle */}
+                        <div className="relative flex justify-center items-center bg-gradient-to-tr from-blue-500 to-blue-600 rounded-full w-24 h-24">
+                            <div className="absolute inset-0.5 bg-white rounded-full"></div>
+                            <Loader2 className="z-10 relative w-12 h-12 text-blue-600 animate-spin" />
+                        </div>
+                        
+                        {/* Decorative dots */}
+                        <div className="-top-1 right-0 absolute bg-blue-400 rounded-full w-3 h-3 animate-bounce"></div>
+                        <div className="bottom-0 left-0 absolute bg-blue-300 rounded-full w-2 h-2 animate-bounce delay-150"></div>
+                    </div>
+
+                    {/* Loading text with shimmer effect */}
+                    <div className="space-y-3 text-center">
+                        <h3 className="relative font-semibold text-gray-900 text-xl">
+                            {message}
+                            <div className="bottom-0 left-0 absolute bg-gradient-to-r from-transparent via-blue-500 to-transparent w-full h-0.5 animate-shimmer"></div>
+                        </h3>
+                        <p className="text-gray-500">{description}</p>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="mt-8 w-full max-w-md">
+                        <div className="bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                            <div className="bg-gradient-to-r from-blue-500 to-blue-600 w-4/5 h-full animate-progressBar"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
-
-            <Stage
-                width={window.innerWidth}
-                height={600}
-                ref={stageRef}
-                style={{ border: "1px solid #ccc" }}
-            >
-                <Layer>
-                    {/* Draw shapes */}
-                    {shapes.map((shape) =>
-                        shape.type === "rect" ? (
-                            <Rect
-                                key={shape.id}
-                                {...shape}
-                                draggable
-                                onDragMove={(e) => handleDrag(e, shape.id)}
-                                onClick={() => setSelectedShape(shape.id)}
-                            />
-                        ) : (
-                            <Circle
-                                key={shape.id}
-                                {...shape}
-                                draggable
-                                onDragMove={(e) => handleDrag(e, shape.id)}
-                                onClick={() => setSelectedShape(shape.id)}
-                            />
-                        )
-                    )}
-
-                    {/* Draw connections */}
-                    {connections.map((conn, i) => {
-                        const fromShape = shapes.find((s) => s.id === conn.from);
-                        const toShape = shapes.find((s) => s.id === conn.to);
-                        if (!fromShape || !toShape) return null;
-
-                        return (
-                            <Line
-                                key={i}
-                                points={[
-                                    fromShape.x + (fromShape.width || 0) / 2,
-                                    fromShape.y + (fromShape.height || fromShape.radius || 0) / 2,
-                                    toShape.x + (toShape.width || 0) / 2,
-                                    toShape.y + (toShape.height || toShape.radius || 0) / 2,
-                                ]}
-                                stroke="black"
-                            />
-                        );
-                    })}
-                </Layer>
-            </Stage>
         </div>
     );
-}
+};
 
-export default AdvancedDrawingBoard;
+export default TaskMateLoading;

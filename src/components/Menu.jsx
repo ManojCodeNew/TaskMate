@@ -9,6 +9,7 @@ import {
     FaClock,
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
+import { BarChart2 } from "lucide-react";
 
 const Menu = ({ isOpen, setIsOpen }) => {
     const menuItems = [
@@ -18,6 +19,11 @@ const Menu = ({ isOpen, setIsOpen }) => {
         { label: "AI Assistant", icon: <FaRobot />, to: "/ai-assistant" },
         { label: "Voice Notes", icon: <FaMicrophone />, to: "/voice-notes" },
         { label: "Timer", icon: <FaClock />, to: "/timer" },
+        {
+            label: "Analytics",
+            icon: <BarChart2 className="w-5 h-5" />,
+            to: "/analytics",
+        },
     ];
 
     return (
