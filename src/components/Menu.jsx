@@ -17,7 +17,7 @@ const Menu = ({ isOpen, setIsOpen }) => {
         { label: "Add Task", icon: <FaPlus />, to: "/add-task" },
         { label: "Drawing Tool", icon: <FaPaintBrush />, to: "/drawing-tool" },
         { label: "AI Assistant", icon: <FaRobot />, to: "/ai-assistant" },
-        { label: "Voice Notes", icon: <FaMicrophone />, to: "/voice-notes" },
+        { label: "Notes", icon: <FaMicrophone />, to: "/notes" },
         { label: "Timer", icon: <FaClock />, to: "/timer" },
         {
             label: "Analytics",

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Clock, Calendar, Tag, AlertCircle, Plus, X } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
 import { useTasks } from '../../context/TaskProvider.jsx';
-
+import { useGlobalNotifications } from '../../context/NotificationProvider.jsx';
+import { NOTIFICATION_TYPES } from '../../Notification/Notifications.jsx';
 const AddTask = ({ onSubmit, onCancel }) => {
     // Get getToken and userId from the hook
     const { getToken, userId } = useAuth();
@@ -28,6 +29,8 @@ const AddTask = ({ onSubmit, onCancel }) => {
         { value: 'medium', label: 'Medium Priority', color: 'bg-yellow-100 text-yellow-800' },
         { value: 'high', label: 'High Priority', color: 'bg-red-100 text-red-800' }
     ];
+
+    const { addNotification } = useGlobalNotifications();
 
     const handleInputChange = (e) => {
         const { name, value, type } = e.target;
@@ -90,7 +93,6 @@ const AddTask = ({ onSubmit, onCancel }) => {
         setIsSubmitting(true);
 
         try {
-            console.log("Form Data", formData);
             // Get the Clerk JWT using the 'supabase' template you configured
             const token = await getToken({ template: 'supabase' });
 
@@ -101,30 +103,14 @@ const AddTask = ({ onSubmit, onCancel }) => {
             };
 
             const createdTask = await addTask(dataToSubmit);
-            console.log("Task created successfully:", createdTask);
-            onCancel(); // Close the form after successful creation
-            // // Send data to the backend API endpoint
-            // const response = await fetch('http://localhost:3000/api/tasks', {
-            //     method: 'POST',
-            //     headers: {
-            //         'Content-Type': 'application/json',
-            //         'Authorization': `Bearer ${token}`
-            //     },
-            //     body: JSON.stringify(dataToSubmit),
-            // });
-
-            // console.log("Response", response);
-
-            // if (!response.ok) {
-            //     const errorData = await response.json();
-            //     throw new Error(errorData.message || 'Failed to create task');
-            // }
-
-            // const createdTask = await response.json();
-            // console.log("Task created successfully:", createdTask);
-
-            // onSubmit?.(createdTask);
-
+            if (createdTask && createdTask.id) {
+                addNotification({
+                    type: NOTIFICATION_TYPES.SUCCESS,
+                    title: 'Success!',
+                    message: 'Task created successfully',
+                    duration: 4000
+                });
+            }
         } catch (error) {
             console.error('Error creating task:', error);
             // You might want to display a user-friendly error message here

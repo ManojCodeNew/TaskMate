@@ -77,28 +77,6 @@ Instructions:
 6. Format response with markdown for readability
         `.trim() : message;
 
-            // temperature (0.0 - 1.0):
-            // Controls randomness in the response
-            // 0.7 is a balanced value that provides:
-            // Some creativity but not too wild
-            // Consistent but not repetitive responses
-            // Lower values (closer to 0) = more focused, deterministic
-            // Higher values (closer to 1) = more creative, varied
-            // topK (1 - 40):
-
-            // Limits the number of tokens considered for each generation step
-            // 40 means it considers the top 40 most likely next tokens
-            // Helps prevent completely random or nonsensical responses
-            // Lower values = more focused output
-            // Higher values = more diverse possibilities
-            // topP (0.0 - 1.0):
-
-            // Controls nucleus sampling (probability mass)
-            // 0.95 means it considers tokens that make up 95% of the probability mass
-            // Helps maintain coherent output while allowing some variation
-            // Lower values = more conservative choices
-            // Higher values = more diverse vocabulary
-
             const payload = {
                 contents: [{ parts: [{ text: contextPrompt }] }],
                 generationConfig: {

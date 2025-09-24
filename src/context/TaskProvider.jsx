@@ -77,13 +77,6 @@ export function TaskProvider({ children }) {
                 throw new Error('No authentication token available');
             }
 
-            // Log the request details for debugging
-            console.log('Updating task:', {
-                taskId,
-                updateData,
-                url: `${import.meta.env.VITE_API_BASE_URL}/tasks/${taskId}`
-            });
-
             const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${taskId}`, {
                 method: 'PUT',
                 headers: {

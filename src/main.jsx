@@ -5,6 +5,8 @@ import App from './App.jsx'
 import { BrowserRouter } from 'react-router-dom'
 import { ClerkProvider } from '@clerk/clerk-react'
 import { TaskProvider } from './context/TaskProvider.jsx'
+import { NotesProvider } from './context/NotesProvider.jsx'
+import { NotificationProvider } from './context/NotificationProvider.jsx'
 
 // Import your Publishable Key
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -15,11 +17,15 @@ if (!PUBLISHABLE_KEY) {
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
-      <TaskProvider>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </TaskProvider>
+      <NotificationProvider position='top-right'>
+        <NotesProvider>
+          <TaskProvider>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </TaskProvider>
+        </NotesProvider>
+      </NotificationProvider>
     </ClerkProvider>
   </StrictMode>,
 )

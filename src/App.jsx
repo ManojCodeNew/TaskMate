@@ -16,6 +16,8 @@ import Home from './Pages/Home/Home.jsx';
 import TaskAnalytics from './Pages/TaskAnalytics/TaskAnalytics.jsx';
 // import NotesPage from './Pages/Notes/NotesPage.jsx';
 import Notes from './Pages/Notes/Notes.jsx';
+import AddNotes from './Pages/Notes/AddNotes.jsx';
+
 function App() {
   return (
     <div className="relative bg-gradient-to-br from-slate-200 via-blue-100 to-slate-300 min-h-screen overflow-hidden">
@@ -100,6 +102,16 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/add-note"
+            element={
+              <ProtectedRoute>
+                <AddNotes />
+              </ProtectedRoute>
+            }
+          />
+          {/* Note Edit route */}
+          <Route path="/notes/edit/:noteId" element={<AddNotes />} />
 
           {/* Catch all */}
           <Route path="*" element={<Navigate to="/sign-in" replace />} />
