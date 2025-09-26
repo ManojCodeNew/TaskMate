@@ -194,16 +194,7 @@ const TaskAnalytics = () => {
                             <CalendarDays className="w-4 h-4" />
                             <span className="text-sm sm:text-base">Monthly</span>
                         </button>
-                        <button
-                            onClick={() => setView('prediction')}
-                            className={`whitespace-nowrap px-3 sm:px-4 py-2 rounded-lg flex items-center gap-2 ${view === 'prediction'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }`}
-                        >
-                            <TrendingUp className="w-4 h-4" />
-                            <span className="text-sm sm:text-base">Predictions</span>
-                        </button>
+
                     </div>
                 </div>
 

@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/clerk-react';
 import { useTasks } from '../../context/TaskProvider.jsx';
 import { useGlobalNotifications } from '../../context/NotificationProvider.jsx';
 import { NOTIFICATION_TYPES } from '../../Notification/Notifications.jsx';
+import DateTimePicker from '../../components/DateTimePicker.jsx';
 const AddTask = ({ onSubmit, onCancel }) => {
     // Get getToken and userId from the hook
     const { getToken, userId } = useAuth();
@@ -64,6 +65,8 @@ const AddTask = ({ onSubmit, onCancel }) => {
 
     const validateForm = () => {
         const newErrors = {};
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
         if (!formData.title.trim()) {
             newErrors.title = 'Task title is required';
@@ -71,10 +74,20 @@ const AddTask = ({ onSubmit, onCancel }) => {
 
         if (!formData.start_date) {
             newErrors.start_date = 'Start date is required';
+        } else {
+            const startDate = new Date(formData.start_date);
+            if (startDate < today) {
+                newErrors.start_date = 'Start date cannot be in the past';
+            }
         }
 
         if (!formData.due_date) {
             newErrors.due_date = 'Due date is required';
+        } else {
+            const dueDate = new Date(formData.due_date);
+            if (dueDate < today) {
+                newErrors.due_date = 'Due date cannot be in the past';
+            }
         }
 
         if (formData.estimatedDuration <= 0) {
@@ -96,9 +109,11 @@ const AddTask = ({ onSubmit, onCancel }) => {
             // Get the Clerk JWT using the 'supabase' template you configured
             const token = await getToken({ template: 'supabase' });
 
-            // Combine form data with the user ID from Clerk
+            // Convert datetime-local values to IST timezone without conversion
             const dataToSubmit = {
                 ...formData,
+                start_date: formData.start_date ? formData.start_date + ':00+05:30' : '',
+                due_date: formData.due_date ? formData.due_date + ':00+05:30' : '',
                 user_id: userId // Associate the task with the authenticated user's ID
             };
 
@@ -229,53 +244,20 @@ const AddTask = ({ onSubmit, onCancel }) => {
                         </div>
                     </div>
 
-                    {/* Recurrence and Due Date Row */}
+                    {/* Date and Time Row */}
                     <div className="gap-6 grid md:grid-cols-2">
-                        {/* Start Date */}
-                        <div className="space-y-2">
-                            <label className="block font-semibold text-slate-700 text-sm">
-                                Start Date *
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="datetime-local"
-                                    name="start_date"
-                                    value={formData.start_date}
-                                    onChange={handleInputChange}
-                                    className={`w-full px-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-teal-500 focus:border-transparent ${errors.start_date ? 'border-red-300 bg-red-50' : 'border-slate-300'}`}
-                                />
-                                <Calendar className="top-3.5 right-3 absolute w-5 h-5 text-slate-400 pointer-events-none" />
-                            </div>
-                            {errors.start_date && (
-                                <p className="flex items-center gap-1 slide-in-from-left-2 text-red-500 text-sm animate-in">
-                                    <AlertCircle className="w-4 h-4" />
-                                    {errors.start_date}
-                                </p>
-                            )}
-                        </div>
-                        {/* Due Date */}
-                        <div className="space-y-2">
-                            <label className="block font-semibold text-slate-700 text-sm">
-                                Due Date *
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="datetime-local"
-                                    name="due_date"
-                                    value={formData.due_date}
-                                    onChange={handleInputChange}
-                                    className={`w-full px-4 py-3 rounded-lg border transition-all duration-200 focus:ring-2 focus:ring-teal-500 focus:border-transparent ${errors.due_date ? 'border-red-300 bg-red-50' : 'border-slate-300'
-                                        }`}
-                                />
-                                <Calendar className="top-3.5 right-3 absolute w-5 h-5 text-slate-400 pointer-events-none" />
-                            </div>
-                            {errors.due_date && (
-                                <p className="flex items-center gap-1 slide-in-from-left-2 text-red-500 text-sm animate-in">
-                                    <AlertCircle className="w-4 h-4" />
-                                    {errors.due_date}
-                                </p>
-                            )}
-                        </div>
+                        <DateTimePicker
+                            value={formData.start_date}
+                            onChange={(value) => setFormData(prev => ({ ...prev, start_date: value }))}
+                            label="Start Date *"
+                            error={errors.start_date}
+                        />
+                        <DateTimePicker
+                            value={formData.due_date}
+                            onChange={(value) => setFormData(prev => ({ ...prev, due_date: value }))}
+                            label="Due Date *"
+                            error={errors.due_date}
+                        />
                     </div>
 
 

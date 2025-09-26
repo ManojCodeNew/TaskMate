@@ -17,6 +17,7 @@ import TaskAnalytics from './Pages/TaskAnalytics/TaskAnalytics.jsx';
 // import NotesPage from './Pages/Notes/NotesPage.jsx';
 import Notes from './Pages/Notes/Notes.jsx';
 import AddNotes from './Pages/Notes/AddNotes.jsx';
+import DrawingsList from './Pages/DrawingTool/DrawingsList.jsx';
 
 function App() {
   return (
@@ -113,6 +114,10 @@ function App() {
           {/* Note Edit route */}
           <Route path="/notes/edit/:noteId" element={<AddNotes />} />
 
+          {/* Drawing */}
+          <Route path="/drawings" element={<DrawingsList />} />
+          <Route path="/drawing-board" element={<DrawingBoard />} />
+          <Route path="/drawing-board/:id" element={<DrawingBoard />} />
           {/* Catch all */}
           <Route path="*" element={<Navigate to="/sign-in" replace />} />
         </Routes>

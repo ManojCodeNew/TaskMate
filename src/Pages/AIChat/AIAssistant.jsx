@@ -1,26 +1,21 @@
-import React, { useState, useRef } from 'react';
-// Icon Providers
-import { FaPaperPlane, FaRobot, FaUser, FaClock } from "react-icons/fa";
-import { AlertCircle, Loader2, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
-// Authentication
+import React, { useState, useEffect, useRef } from 'react';
+import { FaPaperPlane, FaRobot, FaUser, FaTasks, FaStar } from "react-icons/fa";
+import { AlertCircle, Loader2, Menu, X, Send, Bot, MessageSquare } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
-// Context
 import { useTasks } from '../../context/TaskProvider.jsx';
-// Markdown and Syntax Highlighting
 import rehypeHighlight from "rehype-highlight";
 import ReactMarkdown from "react-markdown";
-import "highlight.js/styles/github.css"
+import "highlight.js/styles/github-dark.css"
 
 const AIAssistant = () => {
     const { tasks, loading: tasksLoading, error: tasksError } = useTasks();
-
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [selectedTask, setSelectedTask] = useState(null);
     const [messages, setMessages] = useState([
         {
             id: 1,
             type: 'assistant',
-            content: 'Hello! How can I assist you today?',
+            content: '👋 Hello! I\'m your AI assistant. How can I help you today?',
             followUps: [],
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
@@ -28,37 +23,74 @@ const AIAssistant = () => {
     const [inputMessage, setInputMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
-
-    // follow-up state
     const [showFollowUpInput, setShowFollowUpInput] = useState(false);
     const [selectedText, setSelectedText] = useState('');
     const [followUpPrompt, setFollowUpPrompt] = useState('');
     const [activeMessageId, setActiveMessageId] = useState(null);
     const [activeLineId, setActiveLineId] = useState(null);
-    const { userId } = useAuth();
+    const { userId, getToken } = useAuth();
 
     const messagesEndRef = useRef(null);
     const chatContainerRef = useRef(null);
 
-    // Format Gemini response
+    // Auto-save chat history whenever messages change
+    useEffect(() => {
+        if (messages.length > 1) {
+            saveChatHistory(messages);
+        }
+    }, [messages]);
+
+    // Load chat history on component mount
+    useEffect(() => {
+        loadChatHistory();
+    }, [userId]);
+
+    const loadChatHistory = async () => {
+        try {
+            const token = await getToken();
+            const response = await fetch('http://localhost:3000/api/ai-history', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const history = await response.json();
+                if (history.length > 0) {
+                    setMessages(history);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading chat history:', error);
+        }
+    };
+
+    const saveChatHistory = async (newMessages) => {
+        try {
+            const token = await getToken();
+            await fetch('http://localhost:3000/api/ai-history/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ history: newMessages })
+            });
+        } catch (error) {
+            console.error('Error saving chat history:', error);
+        }
+    };
+
     const formatGeminiResponse = (rawResponse) => {
         if (!rawResponse) return "I couldn't generate a response. Please try again.";
-
-        // First clean up extra whitespace
         let formatted = rawResponse.trim();
         formatted = formatted.replace(/\n{3,}/g, '\n\n');
         formatted = formatted.replace(/\s{3,}/g, ' ');
-
         return formatted;
     };
 
-    // Call Gemini API
     const callGeminiAPI = async (message) => {
         try {
             setIsLoading(true);
             setError(null);
 
-            // Create context-aware prompt
             const contextPrompt = selectedTask ? `
 Context:
 ${JSON.stringify(selectedTask, null, 2)}
@@ -101,13 +133,11 @@ Instructions:
 
             const RawResponse = await response.json();
             const Answer = RawResponse?.candidates?.[0]?.content?.parts?.[0]?.text || "No response from AI.";
-            console.log("Raw Gemini Response:", Answer);
 
             if (!Answer) {
                 throw new Error('Invalid API response structure');
             }
 
-            // Format the response with proper markdown
             return formatGeminiResponse(Answer);
 
         } catch (error) {
@@ -119,12 +149,8 @@ Instructions:
         }
     };
 
-
-
     const handleTaskSelect = (task) => {
         setSelectedTask(task);
-
-        // Format task details for AI context
         const taskDetails = `
 Task: ${task.title}
 Description: ${task.description}
@@ -139,34 +165,19 @@ Progress: ${task.progress || 0}%
         const assistantMessage = {
             id: messages.length + 1,
             type: 'assistant',
-            content: `
-# Task Analysis: ${task.title}
-
-${taskDetails}
-
-## How can I help you with this task?
-
-I can:
-- Break down the task into smaller steps
-- Suggest approaches and solutions
-- Provide time management strategies
-- Help track progress and milestones
-- Answer specific questions about implementation
-
-What aspect would you like to focus on?`,
+            content: `# 📋 Task Analysis: ${task.title}\n\n${taskDetails}\n\n## How can I help you with this task?\n\nI can:\n- Break down the task into smaller steps\n- Suggest approaches and solutions\n- Provide time management strategies\n- Help track progress and milestones\n- Answer specific questions about implementation\n\nWhat aspect would you like to focus on?`,
             followUps: [],
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
         setMessages([...messages, assistantMessage]);
     };
 
-    // Add a function to clear task selection
     const clearTaskSelection = () => {
         setSelectedTask(null);
         const assistantMessage = {
             id: messages.length + 1,
             type: 'assistant',
-            content: "Task context cleared. How else can I help you?",
+            content: "✅ Task context cleared. How else can I help you?",
             followUps: [],
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
@@ -185,9 +196,8 @@ What aspect would you like to focus on?`,
 
         setMessages(prev => [...prev, userMessage]);
         setInputMessage('');
-
-        // Scroll to bottom after user message
         scrollToBottom();
+        
         const aiResponse = await callGeminiAPI(inputMessage);
 
         const assistantMessage = {
@@ -200,8 +210,6 @@ What aspect would you like to focus on?`,
         };
 
         setMessages(prev => [...prev, assistantMessage]);
-
-        // Scroll to bottom after AI response
         scrollToBottom();
     };
 
@@ -212,312 +220,211 @@ What aspect would you like to focus on?`,
         }
     };
 
-    // --- Inline follow-up handling ---
-    const splitIntoLines = (content) => {
-        return content.split(/\n+/).map((line, index) => ({
-            id: index,
-            text: line
-        }));
-    };
-
-    const handleTextSelection = (messageId, lineId, lineText) => {
-        const selection = window.getSelection().toString().trim();
-        if (selection && selection !== lineText) {
-            setSelectedText(selection);
-            setActiveMessageId(messageId);
-            setActiveLineId(lineId);
-            setShowFollowUpInput(true);
-        }
-    };
-
-    // Add this scroll helper function
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
-    const handleFollowUpQuestion = async (messageId, lineId) => {
-        if (!followUpPrompt.trim()) return;
-        const response = await callGeminiAPI(`"${selectedText}" → ${followUpPrompt}`);
+    const MessageContent = ({ message }) => (
+        <div className="prose prose-slate max-w-none dark:prose-invert">
+            <ReactMarkdown rehypePlugins={[rehypeHighlight]}>
+                {message.content}
+            </ReactMarkdown>
+        </div>
+    );
 
-        setMessages(prev =>
-            prev.map(msg =>
-                msg.id === messageId
-                    ? {
-                        ...msg,
-                        followUps: [
-                            ...msg.followUps,
-                            {
-                                id: Date.now(),
-                                lineId,
-                                selectedText,
-                                question: followUpPrompt,
-                                answer: response,
-                                expanded: true
-                            }
-                        ]
-                    }
-                    : msg
-            )
-        );
-
-        setShowFollowUpInput(false);
-        setSelectedText('');
-        setFollowUpPrompt('');
-        setActiveMessageId(null);
-        setActiveLineId(null);
-    };
-
-    const toggleFollowUp = (messageId, followUpId) => {
-        setMessages(prev =>
-            prev.map(msg =>
-                msg.id === messageId
-                    ? {
-                        ...msg,
-                        followUps: msg.followUps.map(fu =>
-                            fu.id === followUpId ? { ...fu, expanded: !fu.expanded } : fu
-                        )
-                    }
-                    : msg
-            )
-        );
-    };
-
-    const MessageContent = ({ message }) => {
-        // Add a ref for the input
-        const inputRef = React.useRef(null);
-
-        // Split content into lines for processing
-        const lines = message.content.split('\n');
-
-        // Update handleTextSelection to focus the input
-        const handleLocalTextSelection = (lineIndex, line) => {
-            const selection = window.getSelection().toString().trim();
-            if (selection && selection !== line) {
-                handleTextSelection(message.id, lineIndex, line);
-                // Focus the input after selection
-                setTimeout(() => {
-                    inputRef.current?.focus();
-                }, 0);
-            }
-        };
-
-        return (
-            <div className="max-w-none prose prose-blue prose-lg">
-                {lines.map((line, lineIndex) => (
-                    <div key={lineIndex} className="relative">
-                        {/* Line content */}
-                        <div
-                            onMouseUp={() => handleLocalTextSelection(lineIndex, line)}
-                            className="cursor-text"
-                        >
-                            <ReactMarkdown
-                                rehypePlugins={[rehypeHighlight]}
-                                components={{
-                                }}
-                            >
-                                {line}
-                            </ReactMarkdown>
-                        </div>
-
-                        {/* Inline follow-up input */}
-                        {showFollowUpInput &&
-                            activeMessageId === message.id &&
-                            activeLineId === lineIndex && (
-                                <div className="flex items-center gap-2 my-2 ml-4">
-                                    <input
-                                        ref={inputRef}
-                                        type="text"
-                                        value={followUpPrompt}
-                                        onChange={(e) => setFollowUpPrompt(e.target.value)}
-                                        placeholder="Ask a follow-up question..."
-                                        className="flex-1 p-2 border focus:border-blue-500 rounded-md focus:ring-1 focus:ring-blue-500 text-sm"
-                                        onKeyPress={(e) => {
-                                            if (e.key === 'Enter') {
-                                                handleFollowUpQuestion(message.id, lineIndex);
-                                            }
-                                        }}
-                                    />
-                                    <button
-                                        onClick={() => handleFollowUpQuestion(message.id, lineIndex)}
-                                        className="bg-blue-500 hover:bg-blue-600 px-3 py-2 rounded-md text-white text-sm"
-                                    >
-                                        Ask
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            setShowFollowUpInput(false);
-                                            setFollowUpPrompt('');
-                                        }}
-                                        className="hover:bg-gray-50 px-3 py-2 border border-gray-300 rounded-md text-sm"
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
-                            )}
-
-                        {/* Rest of your follow-up answers code... */}
-                    </div>
-                ))}
-            </div>
-        );
-    };
-    // Loading state
     if (tasksLoading) {
         return (
-            <div className="w-full">
-                <div className="bg-white shadow-sm p-8 rounded-xl text-center">
-                    <Loader2 className="mx-auto mb-4 w-8 h-8 text-teal-600 animate-spin" />
+            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+                <div className="text-center">
+                    <Loader2 className="w-8 h-8 mx-auto mb-4 text-blue-600 animate-spin" />
                     <p className="text-slate-600">Loading your tasks...</p>
                 </div>
             </div>
         );
     }
 
-    // Error state
     if (tasksError) {
         return (
-            <div className="w-full">
-                <div className="bg-white shadow-sm p-8 border border-red-200 rounded-xl text-center">
-                    <AlertCircle className="mx-auto mb-4 w-8 h-8 text-red-500" />
-                    <h3 className="mb-2 font-semibold text-red-800">Error Loading Tasks</h3>
-                    <p className="mb-4 text-red-600">{error}</p>
+            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+                <div className="text-center">
+                    <AlertCircle className="w-8 h-8 mx-auto mb-4 text-red-500" />
+                    <h3 className="mb-2 text-lg font-semibold text-red-800">Error Loading Tasks</h3>
+                    <p className="text-red-600">{tasksError}</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="relative flex bg-gray-50 h-screen">
-            <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="top-6 left-4 z-20 absolute bg-white hover:bg-gray-50 shadow-sm p-2 border border-gray-200 rounded-lg"
-            >
-                {isSidebarOpen ? (
-                    // Show Close Icon when open
-                    <ChevronLeft className="w-5 h-5 text-gray-600 transition-transform duration-200" />
-                ) : (
-                    // Show Open Icon when closed
-                    <ChevronRight className="w-5 h-5 text-gray-600 transition-transform duration-200" />
-                )}
-            </button>
-            {/* Tasks Panel with animation */}
-            <div className={`flex flex-col bg-white border-gray-200 border-r overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-80' : 'w-0'
-                }`}>
-                <div className="p-6 border-gray-200 border-b">
-                    <h2 className="pl-8 font-semibold text-gray-800 text-xl">TASKS</h2>
+        <div className="flex h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+            {/* Sidebar */}
+            <div className={`${isSidebarOpen ? 'w-80' : 'w-0'} transition-all duration-300 bg-white border-r border-slate-200 shadow-lg overflow-hidden`}>
+                <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-gradient-to-r from-[#5DA6A0] to-[#2F6F6A]">
+                    <div className="flex items-center space-x-3">
+                        <FaTasks className="w-6 h-6 text-white" />
+                        <h2 className="text-xl font-bold text-white">Tasks</h2>
+                    </div>
                 </div>
-                <div className="flex-1 space-y-4 p-4 overflow-y-auto">
-                    {tasks.map((task) => (
+                
+                <div className="p-4 space-y-3 overflow-y-auto h-full">
+                    {tasks.filter(task => 
+                        task.status !== "completed" && 
+                        task.status !== "Completed" && 
+                        task.user_id === userId &&
+                        new Date(task.due_date) >= new Date()
+                    ).map((task) => (
                         <div
                             key={task.id}
                             onClick={() => handleTaskSelect(task)}
-                            className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md ${selectedTask?.id === task.id
-                                ? 'border-blue-500 bg-blue-50 shadow-md'
-                                : 'border-gray-200 hover:border-gray-300'
-                                }`}
+                            className={`p-4 rounded-xl cursor-pointer transition-all duration-200 hover:shadow-md ${
+                                selectedTask?.id === task.id
+                                    ? 'bg-gradient-to-r from-teal-50 to-emerald-50 border-2 border-[#5DA6A0] shadow-md'
+                                    : 'bg-white border border-slate-200 hover:border-slate-300'
+                            }`}
                         >
-                            <h3 className="mb-2 font-semibold text-gray-800">{task.title}</h3>
-                            <p className="mb-3 text-gray-600 text-sm">{task.description}</p>
+                            <h3 className="font-semibold text-slate-800 mb-2">{task.title}</h3>
+                            <p className="text-sm text-slate-600 line-clamp-2">{task.description}</p>
+                            <div className="flex items-center justify-between mt-3">
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                    task.priority === 'high' ? 'bg-red-100 text-red-700' :
+                                    task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-green-100 text-green-700'
+                                }`}>
+                                    {task.priority}
+                                </span>
+                                <span className="text-xs text-slate-500">
+                                    {new Date(task.due_date).toLocaleDateString()}
+                                </span>
+                            </div>
                         </div>
                     ))}
                 </div>
             </div>
 
-            {/* Assistant Panel */}
+            {/* Main Chat Area */}
             <div className="flex flex-col flex-1">
-                <div className="bg-white p-6 border-gray-200 border-b">
-                    <h2 className="font-semibold text-gray-800 text-xl">ASSISTANT</h2>
+                {/* Header */}
+                <div className="flex items-center justify-between p-6 bg-white border-b border-slate-200 shadow-sm">
+                    <div className="flex items-center space-x-4">
+                        <button
+                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                            className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                        >
+                            {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                        </button>
+                        <div className="flex items-center space-x-3">
+                            <div className="p-2 bg-gradient-to-r from-[#5DA6A0] to-[#2F6F6A] rounded-lg">
+                                <FaStar className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-bold text-slate-800">AI Assistant</h1>
+                                <p className="text-sm text-slate-600">Your intelligent task companion</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {selectedTask && (
+                        <div className="flex items-center space-x-3">
+                            <div className="px-4 py-2 bg-teal-50 rounded-lg border border-[#5DA6A0]">
+                                <span className="text-sm font-medium text-[#2F6F6A]">
+                                    📋 {selectedTask.title}
+                                </span>
+                            </div>
+                            <button
+                                onClick={clearTaskSelection}
+                                className="px-3 py-1 text-sm text-[#5DA6A0] hover:text-[#2F6F6A] transition-colors"
+                            >
+                                Clear
+                            </button>
+                        </div>
+                    )}
                 </div>
 
-                <div className="flex-1 space-y-4 bg-gray-50 p-6 overflow-y-auto" ref={chatContainerRef}>
-                    {messages.map((message) => (
-                        <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <div className="flex items-start space-x-2 max-w-4xl">
-                                {message.type === 'assistant' && (
-                                    <div className="flex justify-center items-center bg-blue-500 rounded-full w-8 h-8">
-                                        <FaRobot className="text-white" />
-                                    </div>
-                                )}
-                                <div className="flex flex-col">
-                                    <div className={`px-4 py-3 rounded-lg ${message.type === 'user'
-                                        ? 'bg-blue-500 text-white ml-12'
-                                        : 'bg-white text-gray-800 border border-gray-200'
-                                        }`}>
-                                        {message.type === 'assistant'
-                                            ? <MessageContent message={message} />
-                                            : <div className="whitespace-pre-wrap">{message.content}</div>
+                {/* Messages */}
+                <div className="flex-1 p-6 overflow-y-auto" ref={chatContainerRef}>
+                    <div className="max-w-4xl mx-auto space-y-6">
+                        {messages.map((message) => (
+                            <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`flex items-start space-x-3 max-w-3xl ${message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                                        message.type === 'assistant' 
+                                            ? 'bg-gradient-to-r from-[#5DA6A0] to-[#2F6F6A]' 
+                                            : 'bg-gradient-to-r from-slate-500 to-slate-600'
+                                    }`}>
+                                        {message.type === 'assistant' ? 
+                                            <Bot className="w-5 h-5 text-white" /> : 
+                                            <FaUser className="w-4 h-4 text-white" />
                                         }
                                     </div>
-                                    <div className={`text-xs text-gray-500 mt-1 flex items-center ${message.type === 'user' ? 'justify-end ml-12' : 'justify-start'
+                                    
+                                    <div className={`flex flex-col ${message.type === 'user' ? 'items-end' : 'items-start'}`}>
+                                        <div className={`px-6 py-4 rounded-2xl shadow-sm ${
+                                            message.type === 'user'
+                                                ? 'bg-gradient-to-r from-[#5DA6A0] to-[#2F6F6A] text-white'
+                                                : 'bg-white border border-slate-200'
                                         }`}>
-                                        <FaClock className="mr-1" /> {message.timestamp}
+                                            {message.type === 'assistant' ? (
+                                                <MessageContent message={message} />
+                                            ) : (
+                                                <div className="whitespace-pre-wrap">{message.content}</div>
+                                            )}
+                                        </div>
+                                        <span className="mt-2 text-xs text-slate-500">
+                                            {message.timestamp}
+                                        </span>
                                     </div>
                                 </div>
-                                {message.type === 'user' && (
-                                    <div className="flex justify-center items-center bg-gray-500 rounded-full w-8 h-8">
-                                        <FaUser className="text-white" />
+                            </div>
+                        ))}
+                        
+                        {isLoading && (
+                            <div className="flex justify-start">
+                                <div className="flex items-start space-x-3">
+                                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-r from-[#5DA6A0] to-[#2F6F6A] flex items-center justify-center">
+                                        <Bot className="w-5 h-5 text-white" />
                                     </div>
-                                )}
+                                    <div className="px-6 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
+                                        <div className="flex items-center space-x-2">
+                                            <Loader2 className="w-4 h-4 animate-spin text-[#5DA6A0]" />
+                                            <span className="text-slate-600">AI is thinking...</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                    {isLoading && (
-                        <div className="flex justify-start">
-                            <div className="bg-white px-4 py-3 border border-gray-200 rounded-lg text-gray-800">
-                                <span className="text-gray-500 text-sm">AI is thinking...</span>
-                            </div>
-                        </div>
-                    )}
-                    <div ref={messagesEndRef} />
+                        )}
+                        <div ref={messagesEndRef} />
+                    </div>
                 </div>
 
-                {/* Input */}
-                <div className="bottom-0 sticky bg-white p-6 border-gray-200 border-t">
-                    <div className="flex items-center space-x-4">
-                        <input
-                            type="text"
-                            value={inputMessage}
-                            onChange={(e) => setInputMessage(e.target.value)}
-                            onKeyPress={handleKeyPress}
-                            placeholder={selectedTask ? `Ask about "${selectedTask.title}"...` : "Select a task and ask me anything..."}
-                            disabled={isLoading}
-                            className="flex-1 disabled:bg-gray-100 p-3 border focus:border-blue-500 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed"
-                            autoComplete="off"
-                        />
-                        <button
-                            onClick={handleSendMessage}
-                            disabled={isLoading || !inputMessage.trim()}
-                            className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 p-3 rounded-lg text-white transition disabled:cursor-not-allowed"
-                        >
-                            {isLoading ? (
-                                <div className="border-2 border-white border-t-transparent rounded-full w-5 h-5 animate-spin"></div>
-                            ) : (
-                                <FaPaperPlane size={18} />
-                            )}
-                        </button>
-                    </div>
-                    {selectedTask && (
-                        <div className="bg-blue-50 p-4 border-b border-blue-100">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <h3 className="font-medium text-blue-900">
-                                        Current Task Context: {selectedTask.title}
-                                    </h3>
-                                    <p className="text-blue-700 text-sm">
-                                        Due: {new Date(selectedTask.due_date).toLocaleDateString()} |
-                                        Priority: {selectedTask.priority} |
-                                        Progress: {selectedTask.progress || 0}%
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={clearTaskSelection}
-                                    className="px-3 py-1 border border-blue-500 hover:border-blue-700 rounded-lg text-blue-500 hover:text-blue-700 text-sm transition"
-                                >
-                                    Clear Context
-                                </button>
+                {/* Input Area */}
+                <div className="p-6 bg-white border-t border-slate-200">
+                    <div className="max-w-4xl mx-auto">
+                        <div className="flex items-end space-x-4">
+                            <div className="flex-1 relative">
+                                <textarea
+                                    value={inputMessage}
+                                    onChange={(e) => setInputMessage(e.target.value)}
+                                    onKeyPress={handleKeyPress}
+                                    placeholder={selectedTask ? `Ask about "${selectedTask.title}"...` : "Type your message..."}
+                                    disabled={isLoading}
+                                    rows={1}
+                                    className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#5DA6A0] focus:border-transparent resize-none disabled:bg-slate-50 disabled:cursor-not-allowed"
+                                    style={{ minHeight: '48px', maxHeight: '120px' }}
+                                />
                             </div>
+                            <button
+                                onClick={handleSendMessage}
+                                disabled={isLoading || !inputMessage.trim()}
+                                className="p-3 bg-gradient-to-r from-[#5DA6A0] to-[#2F6F6A] text-white rounded-xl hover:from-[#468C87] hover:to-[#2F6F6A] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+                            >
+                                {isLoading ? (
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                ) : (
+                                    <Send className="w-5 h-5" />
+                                )}
+                            </button>
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
         </div>

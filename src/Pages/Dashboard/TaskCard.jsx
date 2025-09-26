@@ -1,32 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Clock, Calendar, CheckCircle, Circle, Loader2, AlertCircle, 
-  Tag, Star, Trash2, Plus, RefreshCw, ChevronLeft, ChevronRight 
+import {
+    Clock, Calendar, CheckCircle, Circle, Loader2, AlertCircle,
+    Tag, Star, Trash2, Plus, RefreshCw, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useTasks } from '../../context/TaskProvider';
 
-const TaskCard = () => {
+const TaskCard = ({ onDateChange }) => {
     const navigate = useNavigate();
     const { tasks, loading, error, fetchTasks, updateTask, deleteTask } = useTasks();
     const [processingTasks, setProcessingTasks] = useState(new Set());
     const [selectedDate, setSelectedDate] = useState(new Date());
+
+    // Check if selected date is today or in the future
+    const canAddTask = () => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const selected = new Date(selectedDate);
+        selected.setHours(0, 0, 0, 0);
+        return selected >= today;
+    };
+
+    // Update parent component when date changes
+    const handleDateChange = (date) => {
+        setSelectedDate(date);
+        if (onDateChange) {
+            onDateChange(date);
+        }
+    };
     const [dateRange, setDateRange] = useState([]);
 
-    // Generate 7-day date range centered around today
+    const [dateOffset, setDateOffset] = useState(0);
+
+    // Generate 7-day date range based on offset
     useEffect(() => {
         const dates = [];
         const today = new Date();
 
-        // Generate 7 days starting from 3 days before today
+        // Generate 7 days starting from (3 days before today + offset)
         for (let i = -3; i <= 3; i++) {
             const date = new Date(today);
-            date.setDate(today.getDate() + i);
+            date.setDate(today.getDate() + i + (dateOffset * 7));
             dates.push(date);
         }
 
         setDateRange(dates);
-    }, []);
+    }, [dateOffset]);
 
     // Helper function to get category from tags
     const getCategoryFromTags = (tags) => {
@@ -43,7 +62,7 @@ const TaskCard = () => {
         title: task.title,
         description: task.description || '',
         priority: task.priority || "medium",
-        status: task.status || "pending", 
+        status: task.status || "pending",
         category: getCategoryFromTags(task.tags) || "Work",
         completed: task.status === "completed" || task.completed_at !== null,
         due_date: task.due_date,
@@ -58,7 +77,7 @@ const TaskCard = () => {
     // Filter tasks for selected date
     const getTasksForDate = (targetDate) => {
         const targetDateStr = targetDate.toISOString().split("T")[0];
-        
+
         return transformedTasks.filter(task => {
             if (!task) return false;
 
@@ -72,6 +91,7 @@ const TaskCard = () => {
     };
 
     const selectedDateTasks = getTasksForDate(selectedDate);
+    console.log('Tasks for selected date:', selectedDateTasks);
 
     // Toggle task completion
     const toggleTaskCompletion = async (taskId) => {
@@ -81,11 +101,11 @@ const TaskCard = () => {
 
         try {
             const task = transformedTasks.find(t => t.id === taskId);
-            const newCompletedStatus = !task.completed;
+            const isCurrentlyCompleted = task.status === "completed";
 
             await updateTask(taskId, {
-                status: newCompletedStatus ? "completed" : "pending",
-                completed_at: newCompletedStatus ? new Date().toISOString() : null
+                status: isCurrentlyCompleted ? "pending" : "completed",
+                completed_at: isCurrentlyCompleted ? null : new Date().toISOString()
             });
         } catch (err) {
             console.error('Error updating task:', err);
@@ -156,9 +176,9 @@ const TaskCard = () => {
     };
 
     const formatTime = (dateString) => {
-        return new Date(dateString).toLocaleTimeString([], { 
-            hour: '2-digit', 
-            minute: '2-digit' 
+        return new Date(dateString).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
         });
     };
 
@@ -236,7 +256,7 @@ const TaskCard = () => {
                         <div>
                             <h1 className="font-bold text-gray-900 text-2xl">Task Dashboard</h1>
                             <p className="text-gray-500 text-sm">
-                                {selectedDateTasks.length} tasks • {selectedDateTasks.filter(t => t.completed).length} completed
+                                {selectedDateTasks.length} tasks • {selectedDateTasks.filter(t => t.status === "completed").length} completed
                             </p>
                         </div>
                     </div>
@@ -258,10 +278,16 @@ const TaskCard = () => {
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="font-semibold text-gray-900 text-lg">Select Date</h2>
                     <div className="flex items-center gap-2">
-                        <button className="hover:bg-gray-100 p-2 rounded-lg transition-colors">
+                        <button
+                            onClick={() => setDateOffset(prev => prev - 1)}
+                            className="hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                        >
                             <ChevronLeft className="w-5 h-5 text-gray-600" />
                         </button>
-                        <button className="hover:bg-gray-100 p-2 rounded-lg transition-colors">
+                        <button
+                            onClick={() => setDateOffset(prev => prev + 1)}
+                            className="hover:bg-gray-100 p-2 rounded-lg transition-colors"
+                        >
                             <ChevronRight className="w-5 h-5 text-gray-600" />
                         </button>
                     </div>
@@ -277,12 +303,12 @@ const TaskCard = () => {
                         return (
                             <button
                                 key={index}
-                                onClick={() => setSelectedDate(date)}
+                                onClick={() => handleDateChange(date)}
                                 className={`flex flex-col items-center justify-center min-w-[80px] h-20 rounded-xl transition-all duration-200 ${isSelected
-                                        ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
-                                        : isTodayDate
-                                            ? 'bg-green-50 text-green-700 border-2 border-green-200'
-                                            : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border-2 border-transparent'
+                                    ? 'bg-blue-100 text-blue-700 border-2 border-blue-300'
+                                    : isTodayDate
+                                        ? 'bg-green-50 text-green-700 border-2 border-green-200'
+                                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border-2 border-transparent'
                                     }`}
                             >
                                 <span className="mb-1 font-medium text-xs">{dayName}</span>
@@ -309,17 +335,16 @@ const TaskCard = () => {
 
                 {selectedDateTasks.map((task) => {
                     const taskOverdue = isOverdue(task);
-                    
+
                     return (
                         <div
                             key={task.id}
-                            className={`bg-white rounded-xl shadow-sm border transition-all duration-200 hover:shadow-md ${
-                                task.completed 
-                                    ? 'border-green-200 bg-green-50/30' 
-                                    : taskOverdue 
-                                        ? 'border-red-200 bg-red-50/20'
-                                        : 'border-gray-200 hover:border-blue-200'
-                            }`}
+                            className={`bg-white rounded-xl shadow-sm border transition-all duration-200 hover:shadow-md ${task.status === 'completed'
+                                ? 'border-green-200 bg-green-50/30'
+                                : taskOverdue
+                                    ? 'border-red-200 bg-red-50/20'
+                                    : 'border-gray-200 hover:border-blue-200'
+                                }`}
                         >
                             <div className="p-6">
                                 <div className="flex items-start gap-4">
@@ -331,7 +356,7 @@ const TaskCard = () => {
                                     >
                                         {processingTasks.has(task.id) ? (
                                             <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
-                                        ) : task.completed ? (
+                                        ) : task.status === "completed" ? (
                                             <CheckCircle className="w-6 h-6 text-green-500" />
                                         ) : (
                                             <Circle className="w-6 h-6 text-gray-400 hover:text-blue-500" />
@@ -342,9 +367,8 @@ const TaskCard = () => {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-start mb-3">
                                             <div className="flex-1 min-w-0">
-                                                <h3 className={`text-lg font-semibold ${
-                                                    task.completed ? 'line-through text-gray-500' : 'text-gray-900'
-                                                }`}>
+                                                <h3 className={`text-lg font-semibold ${task.status === "completed" ? 'line-through text-gray-500' : 'text-gray-900'
+                                                    }`}>
                                                     {task.title}
                                                 </h3>
                                                 {taskOverdue && (
@@ -371,9 +395,8 @@ const TaskCard = () => {
                                         </div>
 
                                         {task.description && (
-                                            <p className={`text-gray-600 mb-4 ${
-                                                task.completed ? 'line-through opacity-70' : ''
-                                            }`}>
+                                            <p className={`text-gray-600 mb-4 ${task.status === "completed" ? 'line-through opacity-70' : ''
+                                                }`}>
                                                 {task.description}
                                             </p>
                                         )}
@@ -397,11 +420,10 @@ const TaskCard = () => {
                                                 </span>
                                             </div>
 
-                                            <span className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
-                                                task.status === 'completed'
-                                                    ? 'bg-green-50 text-green-700 border-green-200'
-                                                    : 'bg-amber-50 text-amber-700 border-amber-200'
-                                            }`}>
+                                            <span className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${task.status === 'completed'
+                                                ? 'bg-green-50 text-green-700 border-green-200'
+                                                : 'bg-amber-50 text-amber-700 border-amber-200'
+                                                }`}>
                                                 {task.status === 'completed' && <CheckCircle className="inline mr-1 w-3 h-3" />}
                                                 {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
                                             </span>
@@ -411,7 +433,7 @@ const TaskCard = () => {
                                                 {task.category}
                                             </span>
 
-                                            <button 
+                                            <button
                                                 onClick={() => navigate(`/tasks/${task.id}`)}
                                                 className="inline-flex items-center gap-1 hover:bg-blue-50 px-3 py-1.5 rounded-lg font-medium text-blue-600 text-xs transition-colors"
                                             >
@@ -420,7 +442,7 @@ const TaskCard = () => {
                                         </div>
 
                                         {/* Show completion info if completed */}
-                                        {task.completed && task.completed_at && (
+                                        {task.status === "completed" && task.completed_at && (
                                             <div className="mt-3 pt-3 border-gray-100 border-t">
                                                 <p className="text-gray-500 text-xs">
                                                     Completed on {formatDate(task.completed_at)} at {formatTime(task.completed_at)}
@@ -445,13 +467,15 @@ const TaskCard = () => {
                     <p className="mx-auto mb-6 max-w-md text-gray-500">
                         You don't have any tasks scheduled for {isToday(selectedDate) ? 'today' : 'this date'}. Add some tasks to get started with organizing your schedule.
                     </p>
-                    <button 
-                        onClick={() => navigate('/add-task')}
-                        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-medium text-white transition-colors"
-                    >
-                        <Plus className="w-4 h-4" />
-                        Add New Task
-                    </button>
+                    {canAddTask() && (
+                        <button
+                            onClick={() => navigate('/add-task')}
+                            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-medium text-white transition-colors"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Add New Task
+                        </button>
+                    )}
                 </div>
             )}
         </div>

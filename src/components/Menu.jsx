@@ -18,7 +18,7 @@ const Menu = ({ isOpen, setIsOpen }) => {
         { label: "Drawing Tool", icon: <FaPaintBrush />, to: "/drawing-tool" },
         { label: "AI Assistant", icon: <FaRobot />, to: "/ai-assistant" },
         { label: "Notes", icon: <FaMicrophone />, to: "/notes" },
-        { label: "Timer", icon: <FaClock />, to: "/timer" },
+        // { label: "Timer", icon: <FaClock />, to: "/timer" },
         {
             label: "Analytics",
             icon: <BarChart2 className="w-5 h-5" />,

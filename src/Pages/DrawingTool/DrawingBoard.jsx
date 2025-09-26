@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { FaSave, FaTrash, FaPencilAlt, FaSquare, FaCircle } from 'react-icons/fa';
+import { FaSave, FaTrash, FaPencilAlt, FaSquare, FaCircle, FaArrowLeft } from 'react-icons/fa';
+import { useAuth } from '@clerk/clerk-react';
+import { useParams, useNavigate } from 'react-router-dom';
 
 const DrawingBoard = () => {
     const canvasRef = useRef(null);
@@ -11,6 +13,10 @@ const DrawingBoard = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [drawingMode, setDrawingMode] = useState('pencil');
     const [dragStart, setDragStart] = useState(null);
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [drawingTitle, setDrawingTitle] = useState('');
+    const [drawingId, setDrawingId] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     const colors = [
         '#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00',
@@ -18,19 +24,24 @@ const DrawingBoard = () => {
         '#A52A2A', '#808080', '#FFFFFF'
     ];
 
+    const { getToken } = useAuth();
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const isEditMode = Boolean(id);
+
     const redrawCanvas = useCallback(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        
+
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
+
         strokes.forEach(stroke => {
             ctx.strokeStyle = stroke.color;
             ctx.lineWidth = stroke.strokeWidth;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            
+
             if (stroke.type === 'pencil' && stroke.points.length > 1) {
                 ctx.beginPath();
                 ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
@@ -58,12 +69,42 @@ const DrawingBoard = () => {
         }
     }, [redrawCanvas]);
 
+    useEffect(() => {
+        if (id) {
+            loadDrawing(id);
+        }
+    }, [id]);
+
+    const loadDrawing = async (drawingId) => {
+        setIsLoading(true);
+        try {
+            const token = await getToken();
+            const response = await fetch(`http://localhost:3000/api/drawings/${drawingId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                }
+            });
+            
+            if (response.ok) {
+                const drawing = await response.json();
+                setDrawingTitle(drawing.title);
+                setDrawingId(drawing.id);
+                // drawing.data is already an object from JSONB, no need to parse
+                setStrokes(drawing.data.strokes || []);
+            }
+        } catch (error) {
+            console.error('Error loading drawing:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const getMousePos = (e) => {
         const canvas = canvasRef.current;
         const rect = canvas.getBoundingClientRect();
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        
+
         return {
             x: clientX - rect.left,
             y: clientY - rect.top
@@ -74,7 +115,7 @@ const DrawingBoard = () => {
         e.preventDefault();
         const pos = getMousePos(e);
         setIsDrawing(true);
-        
+
         if (drawingMode === 'pencil') {
             setCurrentStroke([pos]);
         } else {
@@ -85,23 +126,23 @@ const DrawingBoard = () => {
     const handleMove = (e) => {
         if (!isDrawing) return;
         e.preventDefault();
-        
+
         const pos = getMousePos(e);
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
-        
+
         if (drawingMode === 'pencil') {
             const newStroke = [...currentStroke, pos];
             setCurrentStroke(newStroke);
-            
+
             redrawCanvas();
-            
+
             if (newStroke.length > 1) {
                 ctx.strokeStyle = strokeColor;
                 ctx.lineWidth = strokeWidth;
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
-                
+
                 ctx.beginPath();
                 ctx.moveTo(newStroke[0].x, newStroke[0].y);
                 newStroke.forEach(point => {
@@ -111,10 +152,10 @@ const DrawingBoard = () => {
             }
         } else if (dragStart) {
             redrawCanvas();
-            
+
             ctx.strokeStyle = strokeColor;
             ctx.lineWidth = strokeWidth;
-            
+
             if (drawingMode === 'rectangle') {
                 const rectWidth = pos.x - dragStart.x;
                 const rectHeight = pos.y - dragStart.y;
@@ -138,9 +179,9 @@ const DrawingBoard = () => {
     const handleEnd = (e) => {
         if (!isDrawing) return;
         e.preventDefault();
-        
+
         const pos = getMousePos(e);
-        
+
         if (drawingMode === 'pencil' && currentStroke.length > 0) {
             const newStroke = {
                 type: 'pencil',
@@ -153,7 +194,7 @@ const DrawingBoard = () => {
             setCurrentStroke([]);
         } else if (dragStart) {
             let newStroke;
-            
+
             if (drawingMode === 'rectangle') {
                 newStroke = {
                     type: 'rectangle',
@@ -179,13 +220,13 @@ const DrawingBoard = () => {
                     timestamp: Date.now()
                 };
             }
-            
+
             if (newStroke) {
                 setStrokes(prev => [...prev, newStroke]);
             }
             setDragStart(null);
         }
-        
+
         setIsDrawing(false);
     };
 
@@ -198,40 +239,58 @@ const DrawingBoard = () => {
         }
     };
 
-    const saveDrawing = async () => {
+    const handleSaveClick = () => {
         if (strokes.length === 0) {
             alert('No drawing to save!');
             return;
         }
+        setShowSaveModal(true);
+    };
+
+    const saveDrawing = async () => {
+        if (!drawingTitle.trim()) {
+            alert('Please enter a title for your drawing!');
+            return;
+        }
 
         setIsSaving(true);
-        
+
         const drawingData = {
             strokes: strokes,
-            canvasWidth: canvasRef.current.width,
-            canvasHeight: canvasRef.current.height,
             createdAt: new Date().toISOString()
         };
 
-        console.log("saving drawing", drawingData);
-        
         try {
-            const response = await fetch('/api/save-drawing', {
-                method: 'POST',
+            const token = await getToken();
+            const url = isEditMode ? `http://localhost:3000/api/drawings/${drawingId}` : 'http://localhost:3000/api/drawings';
+            const method = isEditMode ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method: method,
                 headers: {
                     'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify(drawingData)
+                body: JSON.stringify({
+                    title: drawingTitle,
+                    drawingData: drawingData,
+                    canvasWidth: canvasRef.current.width,
+                    canvasHeight: canvasRef.current.height
+                })
             });
 
             if (response.ok) {
-                alert('Drawing saved successfully!');
+                alert(`Drawing ${isEditMode ? 'updated' : 'saved'} successfully!`);
+                setShowSaveModal(false);
+                if (!isEditMode) {
+                    setDrawingTitle('');
+                }
             } else {
-                throw new Error('Failed to save drawing');
+                throw new Error(`Failed to ${isEditMode ? 'update' : 'save'} drawing`);
             }
         } catch (error) {
-            console.error('Error saving drawing:', error);
-            alert('Failed to save drawing. Please try again.');
+            console.error(`Error ${isEditMode ? 'updating' : 'saving'} drawing:`, error);
+            alert(`Failed to ${isEditMode ? 'update' : 'save'} drawing. Please try again.`);
         } finally {
             setIsSaving(false);
         }
@@ -241,8 +300,22 @@ const DrawingBoard = () => {
         <div className="flex flex-col bg-gray-50 min-h-screen">
             {/* Header */}
             <div className="bg-white shadow-sm p-4 border-gray-200 border-b">
-                <h1 className="font-bold text-gray-800 text-2xl">Drawing Canvas</h1>
-                <p className="text-gray-600 text-sm">Draw freely on the canvas below</p>
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => navigate('/drawings')}
+                        className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
+                    >
+                        <FaArrowLeft /> Back to Drawings
+                    </button>
+                    <div>
+                        <h1 className="font-bold text-gray-800 text-2xl">
+                            {isEditMode ? `Edit: ${drawingTitle}` : 'Drawing Canvas'}
+                        </h1>
+                        <p className="text-gray-600 text-sm">
+                            {isEditMode ? 'Modify your existing drawing' : 'Draw freely on the canvas below'}
+                        </p>
+                    </div>
+                </div>
             </div>
 
             {/* Controls - Scrollable */}
@@ -254,33 +327,30 @@ const DrawingBoard = () => {
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setDrawingMode('pencil')}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all duration-200 ${
-                                    drawingMode === 'pencil'
-                                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                        : 'border-gray-300 hover:border-gray-400 text-gray-700'
-                                }`}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all duration-200 ${drawingMode === 'pencil'
+                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                    : 'border-gray-300 hover:border-gray-400 text-gray-700'
+                                    }`}
                             >
                                 <FaPencilAlt className="w-4 h-4" />
                                 Pencil
                             </button>
                             <button
                                 onClick={() => setDrawingMode('rectangle')}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all duration-200 ${
-                                    drawingMode === 'rectangle'
-                                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                        : 'border-gray-300 hover:border-gray-400 text-gray-700'
-                                }`}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all duration-200 ${drawingMode === 'rectangle'
+                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                    : 'border-gray-300 hover:border-gray-400 text-gray-700'
+                                    }`}
                             >
                                 <FaSquare className="w-4 h-4" />
                                 Rectangle
                             </button>
                             <button
                                 onClick={() => setDrawingMode('circle')}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all duration-200 ${
-                                    drawingMode === 'circle'
-                                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                        : 'border-gray-300 hover:border-gray-400 text-gray-700'
-                                }`}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all duration-200 ${drawingMode === 'circle'
+                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                    : 'border-gray-300 hover:border-gray-400 text-gray-700'
+                                    }`}
                             >
                                 <FaCircle className="w-4 h-4" />
                                 Circle
@@ -296,11 +366,10 @@ const DrawingBoard = () => {
                                 <button
                                     key={color}
                                     onClick={() => setStrokeColor(color)}
-                                    className={`w-8 h-8 rounded-full border-2 transition-all duration-200 hover:scale-110 ${
-                                        strokeColor === color
-                                            ? 'border-gray-800 scale-110 shadow-lg'
-                                            : 'border-gray-300'
-                                    }`}
+                                    className={`w-8 h-8 rounded-full border-2 transition-all duration-200 hover:scale-110 ${strokeColor === color
+                                        ? 'border-gray-800 scale-110 shadow-lg'
+                                        : 'border-gray-300'
+                                        }`}
                                     style={{ backgroundColor: color }}
                                     title={color}
                                 />
@@ -326,7 +395,7 @@ const DrawingBoard = () => {
                     {/* Current Color Preview */}
                     <div className="flex items-center gap-3">
                         <span className="font-semibold text-gray-700 text-sm">Current:</span>
-                        <div 
+                        <div
                             className="border-2 border-gray-300 rounded-full w-6 h-6"
                             style={{ backgroundColor: strokeColor }}
                         />
@@ -350,7 +419,7 @@ const DrawingBoard = () => {
                             onTouchMove={handleMove}
                             onTouchEnd={handleEnd}
                         />
-                        
+
                         {/* Canvas Instructions */}
                         {strokes.length === 0 && (
                             <div className="absolute inset-0 flex justify-center items-center pointer-events-none">
@@ -376,17 +445,17 @@ const DrawingBoard = () => {
                         <FaTrash className="w-4 h-4" />
                         Clear Canvas
                     </button>
-                    
+
                     <button
-                        onClick={saveDrawing}
-                        disabled={strokes.length === 0 || isSaving}
+                        onClick={handleSaveClick}
+                        disabled={strokes.length === 0}
                         className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 shadow-md hover:shadow-lg px-6 py-3 rounded-lg font-medium text-white transition-colors duration-200 disabled:cursor-not-allowed"
                     >
                         <FaSave className="w-4 h-4" />
-                        {isSaving ? 'Saving...' : 'Save Drawing'}
+                        Save Drawing
                     </button>
                 </div>
-                
+
                 {/* Drawing Stats */}
                 <div className="mx-auto mt-3 max-w-6xl text-gray-500 text-sm text-center">
                     {strokes.length > 0 && (
@@ -394,6 +463,42 @@ const DrawingBoard = () => {
                     )}
                 </div>
             </div>
+
+            {/* Save Modal */}
+            {showSaveModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4">
+                        <h3 className="text-lg font-semibold mb-4">{isEditMode ? 'Update Drawing' : 'Save Drawing'}</h3>
+                        <input
+                            type="text"
+                            placeholder="Enter drawing title..."
+                            value={drawingTitle}
+                            onChange={(e) => setDrawingTitle(e.target.value)}
+                            className="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            autoFocus
+                        />
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                onClick={() => {
+                                    setShowSaveModal(false);
+                                    setDrawingTitle('');
+                                }}
+                                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                                disabled={isSaving}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={saveDrawing}
+                                disabled={isSaving || !drawingTitle.trim()}
+                                className="px-6 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded-lg transition-colors disabled:cursor-not-allowed"
+                            >
+                                {isSaving ? 'Saving...' : 'Save'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Custom Slider Styles */}
             <style jsx>{`

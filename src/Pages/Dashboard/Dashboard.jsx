@@ -1,10 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import TaskCard from './TaskCard';
 import TodayProgress from './TodayProgress';
 import { Link } from 'react-router-dom';
 import { Plus, Calendar, CheckCircle, Clock } from 'lucide-react';
 
 const Dashboard = () => {
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    
+    // Check if selected date is today or in the future
+    const canAddTask = () => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const selected = new Date(selectedDate);
+        selected.setHours(0, 0, 0, 0);
+        return selected >= today;
+    };
+    
     return (
         <div className="bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50 min-h-screen">
             {/* Main Content Container */}
@@ -32,14 +43,16 @@ const Dashboard = () => {
                         </div>
                         
                         <div className='flex items-center gap-3 w-full sm:w-auto'>
-                            <Link
-                                className='group flex flex-1 sm:flex-none justify-center items-center gap-2 bg-gradient-to-r from-teal-600 hover:from-teal-700 to-teal-700 hover:to-teal-800 shadow-lg hover:shadow-xl px-6 py-3 rounded-2xl font-semibold text-white text-sm hover:scale-105 transition-all duration-300 transform'
-                                to={'/add-task'}
-                            >
-                                <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
-                                <span className="hidden sm:inline">Add New Task</span>
-                                <span className="sm:hidden">Add Task</span>
-                            </Link>
+                            {canAddTask() && (
+                                <Link
+                                    className='group flex flex-1 sm:flex-none justify-center items-center gap-2 bg-gradient-to-r from-teal-600 hover:from-teal-700 to-teal-700 hover:to-teal-800 shadow-lg hover:shadow-xl px-6 py-3 rounded-2xl font-semibold text-white text-sm hover:scale-105 transition-all duration-300 transform'
+                                    to={'/add-task'}
+                                >
+                                    <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
+                                    <span className="hidden sm:inline">Add New Task</span>
+                                    <span className="sm:hidden">Add Task</span>
+                                </Link>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -98,9 +111,9 @@ const Dashboard = () => {
                             Your Tasks
                         </h2>
                         <div className="flex gap-2">
-                            <button className="bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl font-medium text-slate-700 text-sm transition-colors">
+                            {/* <button className="bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl font-medium text-slate-700 text-sm transition-colors">
                                 All
-                            </button>
+                            </button> */}
                             <button className="bg-teal-100 px-4 py-2 rounded-xl font-medium text-teal-700 text-sm">
                                 Today
                             </button>
@@ -108,7 +121,7 @@ const Dashboard = () => {
                     </div>
                     
                     {/* TaskCard Component */}
-                    <TaskCard />
+                    <TaskCard onDateChange={setSelectedDate} />
                 </div>
 
                 {/* Decorative Elements */}

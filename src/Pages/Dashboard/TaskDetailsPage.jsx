@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTasks } from "../../context/TaskProvider";
+import DateTimePicker from "../../components/DateTimePicker.jsx";
 import {
     Clock,
     Calendar,
@@ -151,18 +152,21 @@ export default function TaskDetailsPage() {
         if (!manualActive) return;
         setManualActive(false);
         if (manualIntervalRef.current) clearInterval(manualIntervalRef.current);
-
-        // Persist session to DB as incremental time
-        await persistTime(manualSeconds);
+        // Store manual timer time to database
+        if (manualSeconds > 0) {
+            await persistTime(manualSeconds);
+            setManualSeconds(0); // Reset after saving
+        }
     };
 
     const stopManual = async () => {
         if (manualIntervalRef.current) clearInterval(manualIntervalRef.current);
-        const secs = manualSeconds;
         setManualActive(false);
+        // Store manual timer time to database before reset
+        if (manualSeconds > 0) {
+            await persistTime(manualSeconds);
+        }
         setManualSeconds(0);
-        // Persist the session if any time elapsed
-        if (secs > 0) await persistTime(secs);
         setActiveTimer(null);
     };
 
@@ -229,20 +233,37 @@ export default function TaskDetailsPage() {
         };
     }, [focusPhase]);
 
-    // Persist incremental seconds to DB and refresh local task state
+    // Persist time to DB (both Manual Timer and Focus Mode)
     const persistTime = async (secondsToAdd) => {
         try {
             if (!task) return;
-            const newTotal = (task.time_spent || 0) + secondsToAdd;
+            const currentTotal = task.time_spent || 0;
+            const newTotal = currentTotal + secondsToAdd;
+            
+            // Only increment pomodoros_completed when completing a focus work session
+            const newPomodoroCount = activeTimer === "focus" && focusPhase === "work" 
+                ? completedPomodoros + 1 
+                : completedPomodoros;
+            
             const payload = {
-                time_spent: newTotal,
+                time_spent: newTotal, // Send absolute total value
                 last_session_time: secondsToAdd,
                 last_paused: new Date().toISOString(),
-                pomodoros_completed: completedPomodoros + (activeTimer === "focus" && focusPhase === "work" ? 1 : 0),
+                pomodoros_completed: newPomodoroCount,
             };
+            
+            console.log('Persisting time:', {
+                activeTimer,
+                focusPhase,
+                secondsToAdd,
+                currentTotal,
+                newTotal,
+                payload
+            });
+            
             await updateTask(task.id, payload);
             // Optimistically update local task
-            setTask((prev) => ({ ...prev, time_spent: newTotal, pomodoros_completed: payload.pomodoros_completed }));
+            setTask((prev) => ({ ...prev, time_spent: newTotal, pomodoros_completed: newPomodoroCount }));
         } catch (e) {
             console.error("Error persisting time:", e);
         }
@@ -251,6 +272,21 @@ export default function TaskDetailsPage() {
     // --- Save, Delete, Toggle Complete ---
     const handleSave = async () => {
         if (!editedTask) return;
+        
+        // Validate dates
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        if (editedTask.start_date && new Date(editedTask.start_date) < today) {
+            alert('Start date cannot be in the past');
+            return;
+        }
+        
+        if (editedTask.due_date && new Date(editedTask.due_date) < today) {
+            alert('Due date cannot be in the past');
+            return;
+        }
+        
         setProcessingTask(true);
         try {
             const updateData = {
@@ -260,8 +296,8 @@ export default function TaskDetailsPage() {
                 status: editedTask.status,
                 tags: editedTask.tags || [],
                 estimatedDuration: editedTask.estimatedDuration || 60,
-                due_date: editedTask.due_date,
-                start_date: editedTask.start_date,
+                due_date: editedTask.due_date ? new Date(editedTask.due_date).toISOString() : '',
+                start_date: editedTask.start_date ? new Date(editedTask.start_date).toISOString() : '',
             };
             await updateTask(editedTask.id, updateData);
             setIsEditing(false);
@@ -509,6 +545,11 @@ export default function TaskDetailsPage() {
                 {activeTimer === "focus" && (
                     <div className="mt-6 p-6 border-gray-100 border-t">
                         <h3 className="mb-4 font-semibold text-gray-900 text-lg">Focus Mode (Pomodoro)</h3>
+                        {/* <div className="bg-blue-50 mb-4 p-3 border border-blue-200 rounded-lg">
+                            <p className="text-blue-800 text-sm">
+                                ✅ <strong>Focus Mode:</strong> Time spent will be automatically saved to the database.
+                            </p>
+                        </div> */}
 
                         {focusPhase === "idle" && (
                             <div className="flex flex-col items-center gap-4">
@@ -547,6 +588,11 @@ export default function TaskDetailsPage() {
                 {activeTimer === "manual" && (
                     <div className="mt-6 p-6 border-gray-100 border-t">
                         <h3 className="mb-4 font-semibold text-gray-900 text-lg">Manual Timer</h3>
+                        {/* <div className="bg-green-50 mb-4 p-3 border border-green-200 rounded-lg">
+                            <p className="text-green-800 text-sm">
+                                ✅ <strong>Manual Timer:</strong> Time spent will be saved to database when paused/stopped and contributes to total time tracking.
+                            </p>
+                        </div> */}
                         <div className="flex items-center gap-4">
                             <p className="font-bold text-green-600 text-2xl">{fmtClock(manualSeconds)}</p>
                             {!manualActive ? (
@@ -559,7 +605,7 @@ export default function TaskDetailsPage() {
                                         Pause & Save
                                     </button>
                                     <button onClick={stopManual} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white">
-                                        Stop & Reset
+                                        Stop & Save
                                     </button>
                                 </>
                             )}
@@ -587,20 +633,21 @@ export default function TaskDetailsPage() {
                     {/* Time details */}
                     <div className="gap-6 grid grid-cols-1 md:grid-cols-2 mb-6">
                         <div>
-                            <h3 className="mb-2 font-medium text-gray-500 text-sm">Start Date & Time</h3>
-                            <div className="flex items-center gap-2 bg-gray-50 px-4 py-3 rounded-lg">
-                                <Calendar className="w-5 h-5 text-gray-500" />
-                                {isEditing ? (
-                                    <input
-                                        type="datetime-local"
-                                        value={editedTask.start_date ? new Date(editedTask.start_date).toISOString().slice(0, 16) : ""}
-                                        onChange={(e) => setEditedTask({ ...editedTask, start_date: e.target.value })}
-                                        className="px-2 py-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                ) : (
-                                    <span className="font-medium text-gray-700">{fmtDateTime(task.start_date)}</span>
-                                )}
-                            </div>
+                            {isEditing ? (
+                                <DateTimePicker
+                                    value={editedTask.start_date}
+                                    onChange={(value) => setEditedTask({ ...editedTask, start_date: value })}
+                                    label="Start Date & Time"
+                                />
+                            ) : (
+                                <>
+                                    <h3 className="mb-2 font-medium text-gray-500 text-sm">Start Date & Time</h3>
+                                    <div className="flex items-center gap-2 bg-gray-50 px-4 py-3 rounded-lg">
+                                        <Calendar className="w-5 h-5 text-gray-500" />
+                                        <span className="font-medium text-gray-700">{fmtDateTime(task.start_date)}</span>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         <div>
@@ -653,20 +700,21 @@ export default function TaskDetailsPage() {
                         </div>
 
                         <div>
-                            <h3 className="mb-2 font-medium text-gray-500 text-sm">Due Date</h3>
-                            <div className="flex items-center gap-2 bg-gray-50 px-4 py-3 rounded-lg">
-                                <Calendar className="w-5 h-5 text-gray-500" />
-                                {isEditing ? (
-                                    <input
-                                        type="datetime-local"
-                                        value={editedTask.due_date ? new Date(editedTask.due_date).toISOString().slice(0, 16) : ""}
-                                        onChange={(e) => setEditedTask({ ...editedTask, due_date: e.target.value })}
-                                        className="px-2 py-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                ) : (
-                                    <span className="font-medium text-gray-700">{fmtDateTime(task.due_date)}</span>
-                                )}
-                            </div>
+                            {isEditing ? (
+                                <DateTimePicker
+                                    value={editedTask.due_date}
+                                    onChange={(value) => setEditedTask({ ...editedTask, due_date: value })}
+                                    label="Due Date & Time"
+                                />
+                            ) : (
+                                <>
+                                    <h3 className="mb-2 font-medium text-gray-500 text-sm">Due Date</h3>
+                                    <div className="flex items-center gap-2 bg-gray-50 px-4 py-3 rounded-lg">
+                                        <Calendar className="w-5 h-5 text-gray-500" />
+                                        <span className="font-medium text-gray-700">{fmtDateTime(task.due_date)}</span>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
 
